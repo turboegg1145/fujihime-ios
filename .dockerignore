@@ -1,0 +1,12 @@
+.git/
+game/
+re/
+build/
+dist/
+out/
+node_modules/
+.venv/
+__pycache__/
+*.log
+*.gpr
+*.rep/

@@ -1,0 +1,38 @@
+name: fujihime
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        http_proxy: ${http_proxy:-}
+        https_proxy: ${https_proxy:-}
+    image: fujihime-re:latest
+    container_name: fujihime-re
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - fujihime_ghidra_home:/home/ubuntu/.ghidra
+      - fujihime_rea_tmp:/tmp/rea
+    environment:
+      JAVA_HOME: /opt/jdk
+      GHIDRA_INSTALL_DIR: /opt/ghidra
+      REA_GHIDRA_STARTUP_TIMEOUT_MS: "600000"
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      TMPDIR: /tmp/rea
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    stdin_open: true
+    tty: false
+    command: ["sleep", "infinity"]
+
+volumes:
+  fujihime_ghidra_home:
+  fujihime_rea_tmp:

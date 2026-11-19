@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+if [[ "$(docker inspect -f '{{.State.Running}}' fujihime-re 2>/dev/null || true)" != "true" ]]; then
+  docker compose -f "${PROJECT_ROOT}/docker-compose.yml" up -d dev >/dev/null 2>&1
+fi
+
+exec docker exec -i fujihime-re rea mcp

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "rea": {
+      "command": "/home/eggdog/项目/腐姬/scripts/rea-docker-mcp.sh",
+      "args": []
+    }
+  }
+}

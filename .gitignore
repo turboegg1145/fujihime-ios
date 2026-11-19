@@ -1,0 +1,24 @@
+# Game binaries and large original assets (verified via docs/game-assets-manifest.sha256)
+game/
+
+# Reverse engineering caches, Ghidra projects, and temporary outputs
+re/ghidra/
+re/.cache/
+*.gpr
+*.rep/
+*.log
+*.tmp
+
+# Build artifacts and dependencies
+build/
+dist/
+out/
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.cache/
+
+# Local environment overrides
+.env
+.env.local
