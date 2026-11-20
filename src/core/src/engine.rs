@@ -9,23 +9,28 @@ use encoding_rs::{GBK, SHIFT_JIS};
 
 use crate::audio::{decode_vorbis_acm_wav, AudioMixer, DecodedAudio, LoopMode};
 use crate::error::{FujihimeError, Result};
-use crate::gfx::compositor::{blit, filter_fill_argb, BlitParams, Canvas800x600, Rect};
+use crate::gfx::compositor::{
+    blit, filter_fill_argb, stretch_blit_srccopy, BlitParams, Canvas800x600, Rect,
+};
 use crate::gfx::decode::{decode_bmp, decode_lwg, decode_wcg, LwgImage};
 use crate::gfx::surface::{Surface, GAME_HEIGHT, GAME_WIDTH};
 use crate::gfx::transition::TransitionRunner;
 use crate::save::{ConfigBlock2007, GlobalSave2002Cd, GlobalSave2007, SlotSave2007};
-use crate::text::caret::{parse_caret_bytes, GaijiBank, TextEncoding, TextStyle};
+use crate::text::caret::{parse_caret_bytes, GaijiBank, TextAlign, TextEncoding, TextStyle};
 use crate::text::freetype::{FontFamily, FontLibrary, FontSet};
 use crate::text::layout::{
-    layout_text, render_layout_to_surface, TypewriterState, TBOX00_TEXT_RECT, TEXT_TIMER_PERIOD_MS,
+    layout_text, layout_text_with_indent, render_layout_to_surface, TypewriterState,
+    TBOX00_TEXT_RECT, TEXT_TIMER_PERIOD_MS,
 };
+use crate::text::rasterizer::RasterMode;
+use crate::ui::widgets::render_ascii_or_utf8_label;
 use crate::ui::{
     blit_fullscreen_srccopy, confirm_action_text, find_recall_0399_route,
-    find_replay_entry, messagebox_text, BacklogAction, BacklogOverlay, CgGalleryState,
-    CompaneButton, CompaneWidget, ConfScrnAction, ConfScrnOverlay, ExtraAction, ExtraMenuState,
-    MessageBoxCallsite, MusicModeState, SaveScrnAction, SaveScrnMode, SaveScrnOverlay,
-    SceneReplayState, SelMapOverlay, Select6Overlay, SystemPanelAction, TitleAction,
-    TitleSceneState, UiRect, CG_GALLERY_TABLE,
+    find_replay_entry, messagebox_text, BacklogAction, BacklogOverlay,
+    CgGalleryState, CompaneButton, CompaneWidget, ConfScrnAction, ConfScrnOverlay, ExtraAction,
+    ExtraMenuState, MessageBoxCallsite, MusicModeState, SaveScrnAction, SaveScrnMode,
+    SaveScrnOverlay, SceneReplayState, SelMapOverlay, Select6Overlay, SystemPanelAction,
+    TitleAction, TitleSceneState, UiRect, CG_GALLERY_TABLE, SCENE_REPLAY_TABLE,
 };
 use crate::vfs::{AssetCategory, AssetVfs, LanguageMode, VfsConfig, XflArchive};
 use crate::video::{MpegWindowController, MpegWindowEvent, MpegWindowPhase};
@@ -189,6 +194,37 @@ struct EngineResources {
     last_error: Option<String>,
 }
 
+#[inline]
+fn anchored_top_left(
+    x: i32,
+    y: i32,
+    anchor_x: i32,
+    anchor_y: i32,
+    width: i32,
+    height: i32,
+) -> (i32, i32) {
+    let ox = if anchor_x != 0 { x - (width >> 1) } else { x };
+    let oy = if anchor_y != 0 { y - (height >> 1) } else { y };
+    (ox, oy)
+}
+
+#[inline]
+fn map_spr_blend_mode(blend_mode: u16, blend_param: u16, alpha_or_mode: u16) -> (u32, i32) {
+    match blend_mode {
+        1 => (2, i32::from(blend_param)),
+        2 => (0x0E, i32::from(blend_param)),
+        3 => (0x68, i32::from(blend_param)),
+        _ if alpha_or_mode != 0 => (2, i32::from(alpha_or_mode)),
+        _ => (0, 0),
+    }
+}
+
+struct TboxGeometry {
+    lwg: Option<Arc<LwgImage>>,
+    text_rect: (i32, i32, i32, i32),
+    wait_xy: (i32, i32),
+}
+
 impl EngineResources {
     fn load_surface(&mut self, cat: AssetCategory, name: &str) -> Result<Arc<Surface>> {
         let key = (cat, name.to_ascii_lowercase());
@@ -240,138 +276,339 @@ impl EngineResources {
         }
     }
 
+    fn resolve_tbox_geometry(&mut self, state: &VmState) -> TboxGeometry {
+        let skin_name = format!("tbox{:02}.lwg", state.tbox.skin_id);
+        let lwg = self
+            .load_lwg(&skin_name)
+            .or_else(|| self.load_lwg("tbox00.lwg"));
+        let text_rect = if state.tbox.rect_custom {
+            (
+                i32::from(state.tbox.rect.0),
+                i32::from(state.tbox.rect.1),
+                i32::from(state.tbox.rect.2).max(1),
+                i32::from(state.tbox.rect.3).max(1),
+            )
+        } else if let Some(tl) = lwg.as_ref().and_then(|img| img.find_layer("text")) {
+            (
+                tl.x,
+                tl.y,
+                tl.surface.width() as i32,
+                tl.surface.height() as i32,
+            )
+        } else {
+            TBOX00_TEXT_RECT
+        };
+        let wait_xy = if state.tbox.icon_pos_custom {
+            (i32::from(state.tbox.icon_pos.0), i32::from(state.tbox.icon_pos.1))
+        } else if let Some(wl) = lwg.as_ref().and_then(|img| img.find_layer("wait")) {
+            (wl.x, wl.y)
+        } else {
+            (i32::from(state.tbox.icon_pos.0), i32::from(state.tbox.icon_pos.1))
+        };
+        TboxGeometry {
+            lwg,
+            text_rect,
+            wait_xy,
+        }
+    }
+
     fn compose_layers_to_new_scene(&mut self, state: &VmState) -> Result<()> {
         filter_fill_argb(&mut self.canvas.new_scene, 0x0000_0000);
 
-        let mut order: Vec<usize> = (0..state.layers.len()).collect();
-        order.sort_by_key(|&idx| (state.layers[idx].z_order, idx));
-
-        for idx in order {
-            let l = &state.layers[idx];
-            if !l.visible {
-                continue;
-            }
-            if l.source_kind == 3 {
-                if idx == 0 {
-                    filter_fill_argb(&mut self.canvas.new_scene, l.fill_color & 0x00FF_FFFF);
-                }
-                continue;
-            }
-            let hovered = l.anim_active && self.hovered_vm_layer == Some(idx);
-            if l.source_kind == 0 && (l.img_id != 0 || (hovered && l.subframe_img_ids[0] != 0)) {
-                let cat = dir_prefix_to_category(&l.dir_prefix);
-                let (img_id, px, py) = if hovered && l.subframe_img_ids[0] != 0 {
-                    (
-                        l.subframe_img_ids[0],
-                        l.subframe_coords[0].0,
-                        l.subframe_coords[0].1,
-                    )
-                } else {
-                    (l.img_id, l.x, l.y)
-                };
-                let stem = format!("{img_id:04}");
-                if let Ok(surf) = self.load_surface(cat, &stem) {
-                    let params = if idx == 0 {
-                        BlitParams {
-                            blend_mode: 0,
-                            alpha_channel_mode: 6,
-                            ..Default::default()
-                        }
-                    } else if hovered {
-                        let hover_mode = match l.anim_x[1] {
-                            1 => 0x0D,
-                            2 => 0x04,
-                            3 => 0x17,
-                            _ => u32::from(l.blend_mode),
-                        };
-                        let hover_alpha = if l.anim_x[1] == 2 {
-                            0x40
-                        } else {
-                            i32::from(l.alpha_or_mode)
-                        };
-                        BlitParams {
-                            blend_mode: hover_mode,
-                            alpha_channel_mode: 0,
-                            global_alpha: hover_alpha,
-                            ..Default::default()
-                        }
-                    } else {
-                        BlitParams {
-                            blend_mode: u32::from(l.blend_mode),
-                            alpha_channel_mode: 0,
-                            global_alpha: i32::from(l.alpha_or_mode),
-                            ..Default::default()
-                        }
-                    };
-                    let clip = Rect::new(
-                        i32::from(l.clip_rect[0]),
-                        i32::from(l.clip_rect[1]),
-                        i32::from(l.clip_rect[2]),
-                        i32::from(l.clip_rect[3]),
-                    );
-                    let clip_opt = if clip.right > clip.left && clip.bottom > clip.top {
-                        Some(clip)
-                    } else {
-                        None
-                    };
-                    self.canvas
-                        .compose_to_new_scene(&surf, &params, (px, py), clip_opt);
-                }
+        #[derive(Clone, Copy)]
+        enum DrawPass {
+            Layer(usize),
+            Eyes,
+            Filter,
+            Gauge(usize),
+        }
+        let mut items: Vec<(i16, u8, usize, DrawPass)> = Vec::with_capacity(state.layers.len() + 12);
+        for (idx, l) in state.layers.iter().enumerate() {
+            if l.visible {
+                items.push((l.z_order, 0, idx, DrawPass::Layer(idx)));
             }
         }
-
-        // Eyes overlay (`0x2B`)
         if state.eyes_overlay.es_id != 0 {
-            let name = format!("es{:03}", state.eyes_overlay.es_id);
-            if let Ok(surf) = self.load_surface(AssetCategory::Grps, &name) {
-                let mode = if state.eyes_overlay.blend_flag == 1 {
-                    0x67
-                } else {
-                    0x68
-                };
-                let params = BlitParams {
-                    blend_mode: mode,
-                    ..Default::default()
-                };
-                self.canvas
-                    .compose_to_new_scene(&surf, &params, (0, 0), None);
+            items.push((state.eyes_overlay.z_order, 1, 0, DrawPass::Eyes));
+        }
+        if state.filter_overlay.alpha_pct != 0 {
+            items.push((state.filter_overlay.z_order, 2, 0, DrawPass::Filter));
+        }
+        for (gi, g) in state.gauges.iter().enumerate() {
+            if g.visible && g.num_id > 0 {
+                items.push((100, 3, gi, DrawPass::Gauge(gi)));
+            }
+        }
+        items.sort_by_key(|&(z, pass_rank, sub_idx, _)| (z, pass_rank, sub_idx));
+
+        for &(_, _, _, pass) in &items {
+            match pass {
+                DrawPass::Layer(idx) => {
+                    let l = &state.layers[idx];
+                    if l.source_kind == 3 {
+                        if idx == 0 {
+                            filter_fill_argb(
+                                &mut self.canvas.new_scene,
+                                l.fill_color & 0x00FF_FFFF,
+                            );
+                        }
+                        continue;
+                    }
+                    if l.source_kind == 2 {
+                        if !l.text_or_path.is_empty() {
+                            if let Some(fonts) = self.fonts.as_ref() {
+                                let style = TextStyle {
+                                    font_family: FontFamily::Gothic,
+                                    base_height: l.extra_50.max(8),
+                                    color_rgb: 0x00FF_FFFF,
+                                    raster_mode: RasterMode::Mode3,
+                                    ..TextStyle::default()
+                                };
+                                let parsed = parse_caret_bytes(
+                                    &l.text_or_path,
+                                    state.encoding,
+                                    style,
+                                    0,
+                                    Some(&state.vars),
+                                    &state.tbox.custom_palette,
+                                );
+                                if let Ok(layout) = layout_text(
+                                    &parsed,
+                                    fonts,
+                                    Some(&self.vfs),
+                                    &mut self.gaiji_bank,
+                                    GAME_WIDTH as i32,
+                                    GAME_HEIGHT as i32,
+                                    false,
+                                ) {
+                                    if !layout.items.is_empty() {
+                                        let mut min_x = i32::MAX;
+                                        let mut min_y = i32::MAX;
+                                        let mut max_x = i32::MIN;
+                                        let mut max_y = i32::MIN;
+                                        for it in &layout.items {
+                                            min_x = min_x.min(it.x);
+                                            min_y = min_y.min(it.y);
+                                            max_x = max_x.max(it.x + it.surface.width() as i32);
+                                            max_y = max_y.max(it.y + it.surface.height() as i32);
+                                        }
+                                        let bw = (max_x - min_x).max(0);
+                                        let bh = (max_y - min_y).max(0);
+                                        let (ax, ay) = anchored_top_left(
+                                            l.x, l.y, l.anchor_x, l.anchor_y, bw, bh,
+                                        );
+                                        render_layout_to_surface(
+                                            &mut self.canvas.new_scene,
+                                            &layout,
+                                            None,
+                                            (ax - min_x, ay - min_y),
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                        continue;
+                    }
+                    let hovered = l.anim_active && self.hovered_vm_layer == Some(idx);
+                    if l.source_kind == 0
+                        && (l.img_id != 0 || (hovered && l.subframe_img_ids[0] != 0))
+                    {
+                        let cat = dir_prefix_to_category(&l.dir_prefix);
+                        let (img_id, px, py) = if hovered && l.subframe_img_ids[0] != 0 {
+                            (
+                                l.subframe_img_ids[0],
+                                l.subframe_coords[0].0,
+                                l.subframe_coords[0].1,
+                            )
+                        } else {
+                            (l.img_id, l.x, l.y)
+                        };
+                        let stem = format!("{img_id:04}");
+                        if let Ok(surf) = self.load_surface(cat, &stem) {
+                            let (ax, ay) = if idx == 0 {
+                                (px, py)
+                            } else {
+                                anchored_top_left(
+                                    px,
+                                    py,
+                                    l.anchor_x,
+                                    l.anchor_y,
+                                    surf.width() as i32,
+                                    surf.height() as i32,
+                                )
+                            };
+                            let (mapped_bm, mapped_ga) =
+                                map_spr_blend_mode(l.blend_mode, l.blend_param, l.alpha_or_mode);
+                            let params = if idx == 0 {
+                                BlitParams {
+                                    blend_mode: 0,
+                                    alpha_channel_mode: 6,
+                                    ..Default::default()
+                                }
+                            } else if hovered {
+                                let hover_mode = match l.anim_x[1] {
+                                    1 => 0x0D,
+                                    2 => 0x04,
+                                    3 => 0x17,
+                                    _ => mapped_bm,
+                                };
+                                let hover_alpha = if l.anim_x[1] == 2 {
+                                    0x40
+                                } else {
+                                    mapped_ga
+                                };
+                                BlitParams {
+                                    blend_mode: hover_mode,
+                                    alpha_channel_mode: 0,
+                                    global_alpha: hover_alpha,
+                                    ..Default::default()
+                                }
+                            } else {
+                                BlitParams {
+                                    blend_mode: mapped_bm,
+                                    alpha_channel_mode: 0,
+                                    global_alpha: mapped_ga,
+                                    ..Default::default()
+                                }
+                            };
+                            let clip = Rect::new(
+                                i32::from(l.clip_rect[0]),
+                                i32::from(l.clip_rect[1]),
+                                i32::from(l.clip_rect[2]),
+                                i32::from(l.clip_rect[3]),
+                            );
+                            let clip_opt = if clip.right > clip.left && clip.bottom > clip.top {
+                                Some(clip)
+                            } else {
+                                None
+                            };
+                            self.canvas
+                                .compose_to_new_scene(&surf, &params, (ax, ay), clip_opt);
+                        }
+                    }
+                }
+                DrawPass::Eyes => {
+                    let name = format!("es{:03}", state.eyes_overlay.es_id);
+                    if let Ok(surf) = self.load_surface(AssetCategory::Grps, &name) {
+                        let mode = if state.eyes_overlay.blend_flag == 1 {
+                            0x67
+                        } else {
+                            0x68
+                        };
+                        let params = BlitParams {
+                            blend_mode: mode,
+                            ..Default::default()
+                        };
+                        self.canvas
+                            .compose_to_new_scene(&surf, &params, (0, 0), None);
+                    }
+                }
+                DrawPass::Filter => {
+                    if let Ok(white) = Surface::filled(GAME_WIDTH, GAME_HEIGHT, 0x00FF_FFFF) {
+                        let ga = ((u32::from(state.filter_overlay.alpha_pct) * 255) / 100) as i32;
+                        let mode = if state.filter_overlay.mode_flag == 1 {
+                            0x6D
+                        } else {
+                            0x6C
+                        };
+                        let params = BlitParams {
+                            blend_mode: mode,
+                            global_alpha: ga,
+                            ..Default::default()
+                        };
+                        self.canvas
+                            .compose_to_new_scene(&white, &params, (0, 0), None);
+                    }
+                }
+                DrawPass::Gauge(gi) => {
+                    let g = &state.gauges[gi];
+                    let num_name = format!("num{:02}", g.num_id);
+                    if let Ok(surf) = self.load_surface(AssetCategory::Grps, &num_name) {
+                        let gw = surf.width();
+                        let digit_h = surf.height() / 10;
+                        if gw > 0 && digit_h > 0 {
+                            let clamped = i32::from(g.value)
+                                .clamp(i32::from(g.min), i32::from(g.max))
+                                .max(0);
+                            let digit = (clamped % 10) as u32;
+                            let row_bytes = (gw as usize) * 4;
+                            let start = (digit as usize) * (digit_h as usize) * row_bytes;
+                            let end = start + (digit_h as usize) * row_bytes;
+                            if end <= surf.as_bytes().len() {
+                                if let Ok(tile) = Surface::from_bgra(
+                                    gw,
+                                    digit_h,
+                                    surf.as_bytes()[start..end].to_vec(),
+                                ) {
+                                    let params = BlitParams {
+                                        blend_mode: 0,
+                                        alpha_channel_mode: 0,
+                                        ..Default::default()
+                                    };
+                                    self.canvas.compose_to_new_scene(
+                                        &tile,
+                                        &params,
+                                        (
+                                            i32::from(g.x) + i32::from(g.num_x),
+                                            i32::from(g.y) + i32::from(g.num_y),
+                                        ),
+                                        None,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        // Fullscreen filter overlay (`0x2D`)
-        if state.filter_overlay.alpha_pct != 0 {
-            let white = Surface::filled(GAME_WIDTH, GAME_HEIGHT, 0x00FF_FFFF)?;
-            let ga = ((u32::from(state.filter_overlay.alpha_pct) * 255) / 100) as i32;
-            let mode = if state.filter_overlay.mode_flag == 1 {
-                0x6D
+        // Textbox + portrait face (`0x30`) + active text + wait cursor overlay
+        let has_tbox_content = !state.tbox.current_text_raw.is_empty() || state.tbox.face_id > 0;
+        if state.tbox.visible && !self.textbox_hidden_by_user && has_tbox_content {
+            let TboxGeometry {
+                lwg,
+                text_rect,
+                wait_xy,
+            } = self.resolve_tbox_geometry(state);
+            let tx = i32::from(state.tbox.pos.0);
+            let ty = i32::from(state.tbox.pos.1);
+
+            let face_surf = if state.tbox.face_id > 0 {
+                self.load_surface(AssetCategory::Grpf, &format!("{:04}", state.tbox.face_id))
+                    .ok()
             } else {
-                0x6C
+                None
             };
-            let params = BlitParams {
-                blend_mode: mode,
-                global_alpha: ga,
+            let face_pos = (
+                i32::from(state.tbox.face_pos.0),
+                i32::from(state.tbox.face_pos.1),
+            );
+            let face_params = BlitParams {
+                blend_mode: 0,
+                alpha_channel_mode: 0,
                 ..Default::default()
             };
-            self.canvas
-                .compose_to_new_scene(&white, &params, (0, 0), None);
-        }
 
-        // Textbox + active text + wait cursor overlay
-        if state.tbox.visible && !self.textbox_hidden_by_user && !state.tbox.current_text_raw.is_empty()
-        {
-            if let Some(lwg) = self.load_lwg("tbox00.lwg") {
+            if state.tbox.face_z == 0 {
+                if let Some(fs) = &face_surf {
+                    self.canvas
+                        .compose_to_new_scene(fs, &face_params, face_pos, None);
+                }
+            }
+
+            if let Some(lwg) = &lwg {
                 for layer in &lwg.layers {
                     if layer.name.eq_ignore_ascii_case("back") {
                         let params = BlitParams {
                             blend_mode: 2,
-                            alpha_channel_mode: 6,
+                            alpha_channel_mode: 0,
                             global_alpha: i32::from(state.tbox.bg_alpha),
                             ..Default::default()
                         };
                         self.canvas.compose_to_new_scene(
                             &layer.surface,
                             &params,
-                            (layer.x, GAME_HEIGHT as i32 - lwg.height as i32 + layer.y),
+                            (tx + layer.x, ty + layer.y),
                             None,
                         );
                     } else if layer.name.eq_ignore_ascii_case("front") {
@@ -383,46 +620,47 @@ impl EngineResources {
                         self.canvas.compose_to_new_scene(
                             &layer.surface,
                             &params,
-                            (layer.x, GAME_HEIGHT as i32 - lwg.height as i32 + layer.y),
+                            (tx + layer.x, ty + layer.y),
                             None,
                         );
                     }
                 }
             }
+
+            if state.tbox.face_z != 0 {
+                if let Some(fs) = &face_surf {
+                    self.canvas
+                        .compose_to_new_scene(fs, &face_params, face_pos, None);
+                }
+            }
+
             if let Some(active) = &self.active_text {
-                let mut text_surf = Surface::filled(
-                    active.layout.box_width as u32,
-                    active.layout.box_height as u32,
-                    0xFF00_0000,
-                )?;
                 render_layout_to_surface(
-                    &mut text_surf,
+                    &mut self.canvas.new_scene,
                     &active.layout,
                     Some(active.typewriter.revealed_count()),
-                    (0, 0),
-                );
-                let tbox_y = GAME_HEIGHT as i32 - 144 + TBOX00_TEXT_RECT.1;
-                let params = BlitParams {
-                    blend_mode: 0,
-                    alpha_channel_mode: 0,
-                    ..Default::default()
-                };
-                self.canvas.compose_to_new_scene(
-                    &text_surf,
-                    &params,
-                    (TBOX00_TEXT_RECT.0, tbox_y),
-                    None,
+                    (tx + text_rect.0, ty + text_rect.1),
                 );
 
-                // Animated click-wait cursor (`wait00.lwg` at `(icon_pos.0, 456 + icon_pos.1)`)
+                // Animated click-wait cursor (`wait%02d.lwg` at `tbox.pos + wait_xy + wl.xy`)
                 if self.show_wait_cursor && active.typewriter.is_finished() {
-                    if let Some(wait_lwg) = self.load_lwg("wait00.lwg") {
+                    let wait_name = format!("wait{:02}.lwg", state.tbox.wait_id);
+                    if let Some(wait_lwg) = self
+                        .load_lwg(&wait_name)
+                        .or_else(|| self.load_lwg("wait00.lwg"))
+                    {
                         let blink_on = (self.wait_cursor_ms / 400).is_multiple_of(2);
                         let layer_name = if blink_on { "grow" } else { "body" };
                         if let Some(wl) = wait_lwg.find_layer(layer_name) {
-                            let wx = i32::from(state.tbox.icon_pos.0) + wl.x;
-                            let wy = (GAME_HEIGHT as i32 - 144) + i32::from(state.tbox.icon_pos.1) + wl.y;
-                            self.canvas.compose_to_new_scene(&wl.surface, &params, (wx, wy), None);
+                            let wx = tx + wait_xy.0 + wl.x;
+                            let wy = ty + wait_xy.1 + wl.y;
+                            let params = BlitParams {
+                                blend_mode: 0,
+                                alpha_channel_mode: 0,
+                                ..Default::default()
+                            };
+                            self.canvas
+                                .compose_to_new_scene(&wl.surface, &params, (wx, wy), None);
                         }
                     }
                 }
@@ -461,11 +699,12 @@ impl VmHost for EngineResources {
 
     fn start_transition(
         &mut self,
-        _state: &VmState,
+        state: &VmState,
         effect_id: u16,
         steps: u16,
         delay_ms: u16,
     ) -> Result<()> {
+        self.compose_layers_to_new_scene(state)?;
         if effect_id == 0 || !self.global_save.config.effect_enable() {
             self.transition = None;
             self.canvas.commit_new_scene();
@@ -486,10 +725,16 @@ impl VmHost for EngineResources {
     }
 
     fn display_text(&mut self, state: &VmState, _slot: u16, raw_expanded: &[u8]) -> Result<()> {
+        let TboxGeometry { text_rect, .. } = self.resolve_tbox_geometry(state);
         let Some(fonts) = self.fonts.as_ref() else {
             self.active_text = None;
             self.refresh_scene(state)?;
             return Ok(());
+        };
+        let align = match state.tbox.text_align {
+            1 => TextAlign::Center,
+            2 => TextAlign::Right,
+            _ => TextAlign::Left,
         };
         let initial_style = TextStyle {
             font_family: if state.tbox.font_family_id == 1 {
@@ -499,6 +744,7 @@ impl VmHost for EngineResources {
             },
             base_height: state.tbox.font_size.max(8),
             color_rgb: state.tbox.color_rgb,
+            align,
             vertical: state.tbox.layout_mode != 0,
             ..TextStyle::default()
         };
@@ -515,14 +761,16 @@ impl VmHost for EngineResources {
             Some(&state.vars),
             &state.tbox.custom_palette,
         );
-        let layout = layout_text(
+        let layout = layout_text_with_indent(
             &parsed,
             fonts,
             Some(&self.vfs),
             &mut self.gaiji_bank,
-            TBOX00_TEXT_RECT.2,
-            TBOX00_TEXT_RECT.3,
+            text_rect.2,
+            text_rect.3,
             state.tbox.layout_mode != 0,
+            i32::from(state.tbox.indent_first),
+            i32::from(state.tbox.indent_cont),
         )?;
         let mut typewriter = TypewriterState::from_layout(&layout);
         if speed == 0 {
@@ -870,6 +1118,14 @@ impl Engine {
             LanguageMode::Japanese => TextEncoding::Cp932,
             LanguageMode::ChineseV1 => TextEncoding::Gbk,
         };
+        if self.vm.current_script.is_some() {
+            if self.scene == TopScene::Title && self.title_state.script_driven {
+                self.enter_title_screen()?;
+                self.music_mode.probe_from_vfs(&self.res.vfs);
+                return Ok(());
+            }
+            let _ = self.vm.sync_loaded_script_and_host(&mut self.res);
+        }
         self.music_mode.probe_from_vfs(&self.res.vfs);
         self.compose_ui_and_commit()?;
         Ok(())
@@ -956,10 +1212,19 @@ impl Engine {
         self.vm.state.fast_skip_active = false;
         self.res.active_text = None;
         self.res.show_wait_cursor = false;
+        self.vm.state.tbox.visible = false;
+        self.vm.state.tbox.current_text_raw.clear();
+        self.vm.state.tbox.face_id = 0;
+        self.vm.state.eyes_overlay = Default::default();
+        self.vm.state.filter_overlay = Default::default();
+        self.compane = CompaneWidget::default();
 
         if self.res.vfs.exists(AssetCategory::Scr, "0101.gsc")
             && !self.res.vfs.exists(AssetCategory::Grps, "top_bg.wcg")
         {
+            if !(1..=4).contains(&self.vm.state.vars[7000]) {
+                self.vm.state.vars[7000] = 1;
+            }
             self.title_state.script_driven = true;
             self.vm.start_script(&mut self.res, 101, 0)?;
             self.advance_vm_until_yield()?;
@@ -1058,6 +1323,52 @@ impl Engine {
         self.close_all_modals();
         self.auto_mode = false;
         self.vm.state.fast_skip_active = false;
+        self.last_yield = None;
+        self.pending_sleep_ms = 0;
+        self.pending_select = None;
+        self.res.active_text = None;
+        self.res.show_wait_cursor = false;
+        self.res.textbox_hidden_by_user = false;
+        self.res.hovered_vm_layer = None;
+        self.compane = CompaneWidget::default();
+
+        // Clear any leftover layers from Title/Menu scripts before entering gameplay.
+        for (idx, layer) in self.vm.state.layers.iter_mut().enumerate() {
+            layer.img_id = 0;
+            layer.text_or_path.clear();
+            layer.source_kind = 0;
+            layer.anim_active = false;
+            layer.z_order = idx as i16;
+            if idx == 0 {
+                layer.dir_prefix = "grpe".to_string();
+                layer.anchor_x = 0;
+                layer.anchor_y = 0;
+                layer.img_id = 999;
+                layer.visible = true;
+            } else {
+                layer.dir_prefix = "grpo".to_string();
+                layer.anchor_x = 1;
+                layer.anchor_y = 1;
+            }
+        }
+        if script_id >= 1000 {
+            // Apply `0111.gsc` baseline textbox/overlay initialization when jumping directly to a scene.
+            let tb = &mut self.vm.state.tbox;
+            tb.skin_id = 0;
+            tb.pos = (0, 456);
+            tb.rect_custom = false;
+            tb.icon_pos_custom = false;
+            tb.font_size = 30;
+            tb.color_rgb = 0x00FF_FFFF;
+            tb.font_family_id = 0;
+            tb.text_align = 0;
+            tb.indent_first = 0;
+            tb.indent_cont = 0;
+            tb.master_enable = true;
+            tb.compane_pos = Some((753, 485));
+            self.vm.state.filter_overlay.z_order = 10;
+        }
+
         self.vm.start_script(&mut self.res, script_id, 0)?;
         self.advance_vm_until_yield()?;
         self.compose_ui_and_commit()?;
@@ -1441,10 +1752,23 @@ impl Engine {
         Ok(())
     }
 
+    fn sync_compane_origin(&mut self) {
+        if let Some((cx, cy)) = self.vm.state.tbox.compane_pos {
+            self.compane.origin_x = i32::from(cx);
+            self.compane.origin_y = i32::from(cy);
+        }
+    }
+
+    /// Recompose the current UI/scene into the presentation framebuffer.
+    pub fn refresh_display(&mut self) -> Result<()> {
+        self.compose_ui_and_commit()
+    }
+
     fn compose_ui_and_commit(&mut self) -> Result<()> {
         if self.res.transition.is_some() {
             return Ok(());
         }
+        self.sync_compane_origin();
         if self.scene == TopScene::MainGame || self.title_state.script_driven {
             self.res.compose_layers_to_new_scene(&self.vm.state)?;
         } else {
@@ -1552,7 +1876,7 @@ impl Engine {
                 if let Ok(bg) = self
                     .res
                     .load_surface(AssetCategory::Grps, "cg_bg")
-                    .or_else(|_| self.res.load_surface(AssetCategory::GrpoEx, "9001"))
+                    .or_else(|_| self.res.load_surface(AssetCategory::Grpe, "9001"))
                 {
                     blit_fullscreen_srccopy(&mut self.res.canvas.new_scene, &bg);
                 }
@@ -1578,18 +1902,27 @@ impl Engine {
                                     )
                                 })
                             {
-                                let params = BlitParams {
-                                    blend_mode: 0,
-                                    alpha_channel_mode: 6,
-                                    ..Default::default()
-                                };
-                                blit(
-                                    &mut self.res.canvas.new_scene,
-                                    &thumb,
-                                    &params,
-                                    (r.x, r.y),
-                                    Some(Rect::new(r.x, r.y, r.x + r.w, r.y + r.h)),
-                                );
+                                if thumb.width() == r.w as u32 && thumb.height() == r.h as u32 {
+                                    let params = BlitParams {
+                                        blend_mode: 0,
+                                        alpha_channel_mode: 6,
+                                        ..Default::default()
+                                    };
+                                    blit(
+                                        &mut self.res.canvas.new_scene,
+                                        &thumb,
+                                        &params,
+                                        (r.x, r.y),
+                                        Some(Rect::new(r.x, r.y, r.x + r.w, r.y + r.h)),
+                                    );
+                                } else {
+                                    stretch_blit_srccopy(
+                                        &mut self.res.canvas.new_scene,
+                                        (r.x, r.y, r.w, r.h),
+                                        &thumb,
+                                        (0, 0, thumb.width() as i32, thumb.height() as i32),
+                                    );
+                                }
                             }
                         } else if let Ok(locked) = self.res.load_surface(AssetCategory::Grps, "cg_0000") {
                             let params = BlitParams {
@@ -1601,14 +1934,71 @@ impl Engine {
                         }
                     }
                 }
+                if let Some(fonts) = self.res.fonts.as_ref() {
+                    let hdr = format!(
+                        "CG GALLERY  TAB {}/7  PAGE {}/5  UNLOCKED {}",
+                        self.cg_gallery.tab + 1,
+                        self.cg_gallery.page + 1,
+                        self.unlocked_cg_count()
+                    );
+                    render_ascii_or_utf8_label(
+                        &mut self.res.canvas.new_scene,
+                        fonts,
+                        Some(&self.res.vfs),
+                        &mut self.res.gaiji_bank,
+                        &hdr,
+                        self.vm.state.encoding,
+                        15,
+                        0x00FF_DE00,
+                        42,
+                        12,
+                        560,
+                        22,
+                    );
+                }
             }
             TopScene::SceneReplay => {
                 if let Ok(bg) = self
                     .res
                     .load_surface(AssetCategory::Grps, "sc_bg")
-                    .or_else(|_| self.res.load_surface(AssetCategory::GrpoEx, "9002"))
+                    .or_else(|_| self.res.load_surface(AssetCategory::Grpe, "9010"))
                 {
                     blit_fullscreen_srccopy(&mut self.res.canvas.new_scene, &bg);
+                }
+                if let Some(fonts) = self.res.fonts.as_ref() {
+                    let unlocked = SCENE_REPLAY_TABLE
+                        .iter()
+                        .filter(|e| {
+                            self.vm
+                                .state
+                                .vars
+                                .get(e.flag_var as usize)
+                                .copied()
+                                .unwrap_or(0)
+                                != 0
+                        })
+                        .count();
+                    let hdr = format!(
+                        "SCENE REPLAY  TAB {}/7  PAGE {}/4  UNLOCKED {}/{}",
+                        self.scene_replay.tab + 1,
+                        self.scene_replay.page + 1,
+                        unlocked,
+                        SCENE_REPLAY_TABLE.len()
+                    );
+                    render_ascii_or_utf8_label(
+                        &mut self.res.canvas.new_scene,
+                        fonts,
+                        Some(&self.res.vfs),
+                        &mut self.res.gaiji_bank,
+                        &hdr,
+                        self.vm.state.encoding,
+                        16,
+                        0x00FF_DE00,
+                        36,
+                        14,
+                        640,
+                        24,
+                    );
                 }
             }
             TopScene::MusicMode => {
@@ -1627,13 +2017,15 @@ impl Engine {
                             None,
                         );
                     }
+                } else if let Ok(bg) = self.res.load_surface(AssetCategory::Grpe, "9009") {
+                    blit_fullscreen_srccopy(&mut self.res.canvas.new_scene, &bg);
                 }
             }
             TopScene::ExtraMenu => {
                 if let Ok(bg) = self
                     .res
                     .load_surface(AssetCategory::Grps, "top_exbg")
-                    .or_else(|_| self.res.load_surface(AssetCategory::GrpoTp, "9012"))
+                    .or_else(|_| self.res.load_surface(AssetCategory::Grpe, "9011"))
                 {
                     blit_fullscreen_srccopy(&mut self.res.canvas.new_scene, &bg);
                 }
@@ -1899,7 +2291,15 @@ impl Engine {
                 l.subframe_coords[0]
             };
             if let Ok(surf) = self.res.load_surface(cat, &format!("{iid:04}")) {
-                if UiRect::new(bx, by, surf.width() as i32, surf.height() as i32).contains(px, py) {
+                let (ax, ay) = anchored_top_left(
+                    bx,
+                    by,
+                    l.anchor_x,
+                    l.anchor_y,
+                    surf.width() as i32,
+                    surf.height() as i32,
+                );
+                if UiRect::new(ax, ay, surf.width() as i32, surf.height() as i32).contains(px, py) {
                     return Some(idx);
                 }
             }
@@ -2284,6 +2684,7 @@ impl Engine {
         }
 
         // Check `compane.lwg` controls before advancing dialogue
+        self.sync_compane_origin();
         let comp_lwg = self.res.load_lwg("compane.lwg");
         if !self.res.textbox_hidden_by_user || self.compane.pinned {
             match kind {
@@ -2316,7 +2717,11 @@ impl Engine {
             }
         }
 
-        if kind == PointerKind::Up && matches!(self.last_yield, Some(VmYield::WaitClick { .. })) {
+        if kind == PointerKind::Up
+            && (0..GAME_WIDTH as i32).contains(&x)
+            && (0..GAME_HEIGHT as i32).contains(&y)
+            && matches!(self.last_yield, Some(VmYield::WaitClick { .. }))
+        {
             self.advance_dialogue_click()?;
         }
         Ok(())

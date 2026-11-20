@@ -79,7 +79,7 @@ jobs:
           IPHONEOS_DEPLOYMENT_TARGET: "14.4"
         run: |
           export IPHONEOS_DEPLOYMENT_TARGET=14.4
-          cargo build --release --target aarch64-apple-ios
+          cargo build --release --target aarch64-apple-ios --lib
           mkdir -p ../ios/Vendor
           cp target/aarch64-apple-ios/release/libfujihime_core.a ../ios/Vendor/libfujihime_core.a
           lipo -info ../ios/Vendor/libfujihime_core.a

@@ -140,9 +140,21 @@ pub struct BacklogEntry {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VmTextboxState {
     pub visible: bool,
+    /// Master enable flag set by `0x5E` (`0x415750` -> `*(tbox+0xac)`).
+    pub master_enable: bool,
     pub active_slot: u16,
+    /// Textbox window origin `(x, y)` on `800x600` (`0x5A` -> `0x4165a0`).
     pub pos: (i16, i16),
     pub rect: (i16, i16, i16, i16),
+    /// Textbox skin index (`0x5C` -> `tbox%02d.lwg`, `0x4165e0`).
+    pub skin_id: u16,
+    /// Wait cursor skin index (`0x67` -> `wait%02d.lwg`, `0x416600`).
+    pub wait_id: u16,
+    /// Whether `0x5B tbox_rect` explicitly overrode `rect` after the last `0x5C` skin load.
+    pub rect_custom: bool,
+    /// Whether `0x64` explicitly overrode `icon_pos` after the last `0x5C` skin load.
+    pub icon_pos_custom: bool,
+    /// Font pixel height (`0x60` -> `0x440db0`, default `24`).
     pub font_size: u16,
     pub wrap_cfg: i16,
     pub layout_mode: u16, // 0=horz, nonzero=vert
@@ -151,14 +163,23 @@ pub struct VmTextboxState {
     pub char_spacing: i16,
     pub line_spacing: i16,
     pub shadow_mode: u16,
+    /// Paragraph alignment (`0x62` -> `0x440dd0`: 0=Left, 1=Center, 2=Right).
+    pub text_align: u16,
+    /// First-line & continuation-line horizontal indent (`0x63` -> `0x440e20`).
+    pub indent_first: i16,
+    pub indent_cont: i16,
     pub speed: u16,
     pub speed_p3: i16,
     pub face_id: i16,
     pub face_mode: i16,
     pub face_pos: (i16, i16),
+    pub face_z: i16,
     pub icon_pos: (i16, i16),
-    pub font_family_id: u16, // 0=Gothic, 1=Mincho
+    /// Optional `compane.lwg` origin override (`0x5D` -> `0x415700`).
+    pub compane_pos: Option<(i16, i16)>,
+    pub font_family_id: u16, // 0=Gothic, 1=Mincho (`0x61` -> `0x440dc0`)
     pub bg_color_rgb: u32,
+    pub wait_glow_rgb: u32,
     pub bg_alpha: u8,
     pub style_p1: i16,
     pub style_p2: i32,
@@ -176,9 +197,14 @@ impl Default for VmTextboxState {
     fn default() -> Self {
         Self {
             visible: true,
+            master_enable: true,
             active_slot: 0,
-            pos: (68, 26),
-            rect: (68, 26, 698, 134),
+            pos: (0, 456),
+            rect: (68, 26, 630, 108),
+            skin_id: 0,
+            wait_id: 0,
+            rect_custom: false,
+            icon_pos_custom: false,
             font_size: 24,
             wrap_cfg: 0,
             layout_mode: 0,
@@ -187,14 +213,20 @@ impl Default for VmTextboxState {
             char_spacing: 0,
             line_spacing: 5,
             shadow_mode: 0,
+            text_align: 0,
+            indent_first: 0,
+            indent_cont: 0,
             speed: 1,
             speed_p3: 0,
             face_id: 0,
             face_mode: 0,
             face_pos: (0, 0),
+            face_z: 0,
             icon_pos: (728, 113),
+            compane_pos: None,
             font_family_id: 0,
             bg_color_rgb: 0x0000_0000,
+            wait_glow_rgb: 0x0064_645A,
             bg_alpha: 0x80,
             style_p1: 1,
             style_p2: 1,
@@ -1300,6 +1332,7 @@ impl VmRuntime {
                 }
 
                 let expanded = self.expand_str_by_idx(text_str);
+                self.state.tbox.visible = self.state.tbox.master_enable;
                 self.state.tbox.active_slot = slot_u16;
                 self.state.tbox.current_text_raw = expanded.clone();
                 self.state.tbox.current_voice_id = vid;
@@ -1355,6 +1388,7 @@ impl VmRuntime {
                 }
 
                 let expanded = self.expand_str_by_idx(text_str);
+                self.state.tbox.visible = self.state.tbox.master_enable;
                 self.state.tbox.active_slot = slot_u16;
                 self.state.tbox.current_text_raw.extend_from_slice(&expanded);
                 let combined = self.state.tbox.current_text_raw.clone();
@@ -1390,10 +1424,12 @@ impl VmRuntime {
                     }));
                 }
             }
+            // `0x5A` (`0x422640` -> `0x4159e0` -> `0x4165a0`): sets textbox window origin `(x, y)`.
             CommandOp::TboxTextPos { slot, x, y } => {
                 let _s = self.state.eval_expr(slot);
                 self.state.tbox.pos = (self.state.eval_expr(x), self.state.eval_expr(y));
             }
+            // `0x5B` (`0x4225f0` -> `0x415a10` + `0x415b40`): sets text region `(x, y, w, h)`.
             CommandOp::TboxRect {
                 slot,
                 x1,
@@ -1408,18 +1444,32 @@ impl VmRuntime {
                     self.state.eval_expr(x2),
                     self.state.eval_expr(y2),
                 );
+                self.state.tbox.rect_custom = true;
             }
+            // `0x5C` (`0x422540` -> `0x415980` -> `0x4165e0` -> `0x416a20`): loads `tbox%02d.lwg`.
             CommandOp::TboxFontSize { slot, size } => {
                 let _s = self.state.eval_expr(slot);
-                self.state.tbox.font_size = self.state.eval_expr(size).max(1) as u16;
+                self.state.tbox.skin_id = self.state.eval_expr(size).max(0) as u16;
+                self.state.tbox.rect_custom = false;
+                self.state.tbox.icon_pos_custom = false;
             }
+            // `0x5D` (`0x4226d0` -> `0x415700`): sets `compane.lwg` container position `(x, y)`.
             CommandOp::TboxWrapCfg { slot, val } => {
-                let _s = self.state.eval_expr(slot);
-                self.state.tbox.wrap_cfg = self.state.eval_expr(val);
+                let x = self.state.eval_expr(slot);
+                let y = self.state.eval_expr(val);
+                self.state.tbox.compane_pos = Some((x, y));
             }
+            // `0x5E` (`0x422670` -> `0x415750` -> `0x4157d0`): sets textbox master enable flag.
             CommandOp::TboxMode { mode } => {
-                self.state.tbox.layout_mode = self.state.eval_expr(mode) as u16;
+                let enabled = self.state.eval_expr(mode) != 0;
+                self.state.tbox.master_enable = enabled;
+                if !enabled {
+                    self.state.tbox.visible = false;
+                } else if !self.state.tbox.current_text_raw.is_empty() {
+                    self.state.tbox.visible = true;
+                }
             }
+            // `0x5F` (`0x4223b0`): text color preset.
             CommandOp::TboxColorPreset { slot, preset } => {
                 let _s = self.state.eval_expr(slot);
                 let p = self.state.eval_expr(preset);
@@ -1436,46 +1486,57 @@ impl VmRuntime {
                 };
                 self.state.tbox.color_rgb = rgb;
             }
+            // `0x60` (`0x4224c0` -> `0x415c00` -> `0x416790` -> `0x440db0`): sets font pixel height.
             CommandOp::TboxCharSpacing { slot, px } => {
                 let _s = self.state.eval_expr(slot);
-                self.state.tbox.char_spacing = self.state.eval_expr(px);
+                self.state.tbox.font_size = self.state.eval_expr(px).max(1) as u16;
             }
+            // `0x61` (`0x4224e0` -> `0x415c50` -> `0x4167f0` -> `0x440dc0`): sets font family (`0=Gothic, 1=Mincho`).
             CommandOp::TboxLineSpacing { slot, px } => {
                 let _s = self.state.eval_expr(slot);
-                self.state.tbox.line_spacing = self.state.eval_expr(px);
+                self.state.tbox.font_family_id = self.state.eval_expr(px).max(0) as u16;
             }
+            // `0x62` (`0x422500` -> `0x415ca0` -> `0x416820` -> `0x440dd0`): sets alignment (`0=Left, 1=Center, 2=Right`).
             CommandOp::TboxShadow { slot, mode } => {
                 let _s = self.state.eval_expr(slot);
-                self.state.tbox.shadow_mode = self.state.eval_expr(mode) as u16;
+                self.state.tbox.text_align = self.state.eval_expr(mode).max(0) as u16;
             }
+            // `0x63` (`0x422520` -> `0x415ba0` -> `0x416750` -> `0x440e20`): sets first/continuation indent `(p2, p3)`.
             CommandOp::TboxSpeed { slot, speed, p3 } => {
                 let _s = self.state.eval_expr(slot);
-                self.state.tbox.speed = self.state.eval_expr(speed).max(0) as u16;
-                self.state.tbox.speed_p3 = self.state.eval_expr(p3);
+                self.state.tbox.indent_first = self.state.eval_expr(speed);
+                self.state.tbox.indent_cont = self.state.eval_expr(p3);
             }
+            // `0x64` (`0x422560` -> `0x415a70` -> `0x416660`): sets wait cursor offset `(x, y)`.
             CommandOp::TboxFacePos { slot, x, y } => {
                 let _s = self.state.eval_expr(slot);
-                self.state.tbox.face_pos = (self.state.eval_expr(x), self.state.eval_expr(y));
-            }
-            CommandOp::TboxIconPos { x, y } => {
                 self.state.tbox.icon_pos = (self.state.eval_expr(x), self.state.eval_expr(y));
+                self.state.tbox.icon_pos_custom = true;
+            }
+            // `0x65` (`0x422690` -> `0x415640`): sets portrait widget position `(x, y)`.
+            CommandOp::TboxIconPos { x, y } => {
+                self.state.tbox.face_pos = (self.state.eval_expr(x), self.state.eval_expr(y));
             }
             CommandOp::TextVoiceWaitMode { mode } => {
                 self.state.tbox.wait_mode = i32::from(self.state.eval_expr(mode));
             }
+            // `0x67` (`0x422590` -> `0x4159b0` -> `0x416600` -> `0x416db0`): loads `wait%02d.lwg`.
             CommandOp::TboxFontType { slot, font_id } => {
                 let _s = self.state.eval_expr(slot);
-                self.state.tbox.font_family_id = self.state.eval_expr(font_id) as u16;
+                self.state.tbox.wait_id = self.state.eval_expr(font_id).max(0) as u16;
             }
+            // `0x68` (`0x4225b0` -> `0x415ad0` -> `0x4166a0`): sets wait cursor glow RGB.
             CommandOp::TboxBgColor { slot, r, g, b } => {
                 let _s = self.state.eval_expr(slot);
                 let rr = (self.state.eval_expr(r) as u32) & 0xFF;
                 let gg = (self.state.eval_expr(g) as u32) & 0xFF;
                 let bb = (self.state.eval_expr(b) as u32) & 0xFF;
-                self.state.tbox.bg_color_rgb = (rr << 16) | (gg << 8) | bb;
+                self.state.tbox.wait_glow_rgb = (rr << 16) | (gg << 8) | bb;
             }
+            // `0x69` (`0x4226b0` -> `0x415690`): sets portrait Z-order (`0 -> 10, nonzero -> 0`).
             CommandOp::TboxBgAlpha { alpha } => {
-                self.state.tbox.bg_alpha = (self.state.eval_expr(alpha) & 0xFF) as u8;
+                let z_flag = self.state.eval_expr(alpha);
+                self.state.tbox.face_z = if z_flag == 0 { 10 } else { 0 };
             }
             CommandOp::BacklogSetTitle { str_idx, reset } => {
                 if self.state.eval_expr(reset) != 0 {
@@ -1529,7 +1590,6 @@ impl VmRuntime {
                     self.state.layers[0].visible = true;
                 }
                 if !self.state.batch_mode {
-                    host.refresh_scene(&self.state)?;
                     host.start_transition(&self.state, 0, 15, 0)?;
                 }
             }
@@ -1540,13 +1600,16 @@ impl VmRuntime {
                 self.state.layers[0].fill_color = if wf == 1 { 0x00FF_FFFF } else { 0x0000_0000 };
                 self.state.layers[0].visible = true;
                 if !self.state.batch_mode {
-                    host.refresh_scene(&self.state)?;
-                    host.start_transition(&self.state, 1, 15, 0)?;
-                    return Ok(Some(VmYield::WaitTransition {
-                        effect_id: 1,
-                        steps: 15,
-                        delay_ms: 0,
-                    }));
+                    if self.state.fast_skip_active {
+                        host.refresh_scene(&self.state)?;
+                    } else {
+                        host.start_transition(&self.state, 1, 15, 0)?;
+                        return Ok(Some(VmYield::WaitTransition {
+                            effect_id: 1,
+                            steps: 15,
+                            delay_ms: 0,
+                        }));
+                    }
                 }
             }
             CommandOp::SprLoadLayer0 { cg_id, x, y, alpha } => {
@@ -1593,9 +1656,10 @@ impl VmRuntime {
                 let eid = self.state.eval_expr(effect_id) as u16;
                 let st = self.state.eval_expr(steps) as u16;
                 let dly = self.state.eval_expr(delay_ms) as u16;
-                host.refresh_scene(&self.state)?;
-                host.start_transition(&self.state, eid, st, dly)?;
-                if !self.state.fast_skip_active && eid != 0 && eid < 300 {
+                if self.state.fast_skip_active || eid == 0 || eid >= 300 {
+                    host.refresh_scene(&self.state)?;
+                } else {
+                    host.start_transition(&self.state, eid, st, dly)?;
                     return Ok(Some(VmYield::WaitTransition {
                         effect_id: eid,
                         steps: if st == 0 { 10 } else { st },
@@ -1615,9 +1679,10 @@ impl VmRuntime {
                 };
                 let digit = (self.state.eval_expr(focus_digit).clamp(0, 9)) as u16;
                 let eid = base + digit;
-                host.refresh_scene(&self.state)?;
-                host.start_transition(&self.state, eid, 0, 0)?;
-                if !self.state.fast_skip_active {
+                if self.state.fast_skip_active {
+                    host.refresh_scene(&self.state)?;
+                } else {
+                    host.start_transition(&self.state, eid, 0, 0)?;
                     return Ok(Some(VmYield::WaitTransition {
                         effect_id: eid,
                         steps: 0,
@@ -1767,13 +1832,14 @@ impl VmRuntime {
                     host.refresh_scene(&self.state)?;
                 }
             }
+            // `0x26` (`0x423230` -> `0x406300`): sets sprite centering flags `(anchor_x, anchor_y)`.
             CommandOp::SprPos { layer, x, y } => {
                 let l_spec = self.state.eval_expr(layer);
-                let px = i32::from(self.state.eval_expr(x));
-                let py = i32::from(self.state.eval_expr(y));
+                let ax = i32::from(self.state.eval_expr(x));
+                let ay = i32::from(self.state.eval_expr(y));
                 for li in self.target_layers(l_spec) {
-                    self.state.layers[li].x = px;
-                    self.state.layers[li].y = py;
+                    self.state.layers[li].anchor_x = ax;
+                    self.state.layers[li].anchor_y = ay;
                 }
                 if !self.state.batch_mode {
                     host.refresh_scene(&self.state)?;
@@ -1935,6 +2001,7 @@ impl VmRuntime {
                     self.state.layers[li].extra_50 = v;
                 }
             }
+            // `0x79` (`0x4234f0`): when `layer == 0`, updates only layers `1..=99`, preserving layer 0 (`grpe`).
             CommandOp::SprDir { layer, str_idx } => {
                 let l_spec = self.state.eval_expr(layer);
                 let raw = self.expand_str_by_idx(str_idx);
@@ -1943,12 +2010,7 @@ impl VmRuntime {
                     .trim_start_matches("./")
                     .trim_start_matches('\\')
                     .to_string();
-                let indices: Vec<usize> = if l_spec == 0 {
-                    (0..LAYER_COUNT).collect()
-                } else {
-                    self.target_layers(l_spec)
-                };
-                for li in indices {
+                for li in self.target_layers(l_spec) {
                     self.state.layers[li].dir_prefix = dir.clone();
                 }
             }

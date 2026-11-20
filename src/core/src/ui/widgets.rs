@@ -111,15 +111,7 @@ pub fn render_dbcs_text(
     };
     let parsed = parse_caret_bytes(raw, encoding, style, 0, None, &[color_rgb; 10]);
     if let Ok(layout) = layout_text(&parsed, fonts, vfs, gaiji, max_w, max_h, false) {
-        if let Ok(mut text_surf) = Surface::filled(max_w as u32, max_h as u32, 0xFF00_0000) {
-            render_layout_to_surface(&mut text_surf, &layout, None, (0, 0));
-            let params = BlitParams {
-                blend_mode: 0,
-                alpha_channel_mode: 0,
-                ..Default::default()
-            };
-            blit(dst, &text_surf, &params, (x, y), None);
-        }
+        render_layout_to_surface(dst, &layout, None, (x, y));
     }
 }
 
@@ -258,7 +250,6 @@ impl CompaneWidget {
             return;
         };
         blit_lwg_layer_at(dst, img, "bg", self.origin_x, self.origin_y, 255);
-        blit_lwg_layer_at(dst, img, "slide_lev", self.origin_x, self.origin_y, 255);
 
         let states = [
             (CompaneButton::Slide, "slide", "slide_f", self.pinned),
@@ -513,14 +504,13 @@ impl ConfScrnOverlay {
             blit_lwg_layer_at(dst, img, name, 0, 0, 255);
         }
 
-        // Tracks & volume knobs
+        // Volume / auto-wait knobs (`*_lev` layers are invisible layout bounds, track is drawn on `bg`)
         for (track, knob, knob_f, val, max_v, sl_kind) in [
             ("bgm_lev", "bgm_vol", "bgm_vol_f", u32::from(cfg.bgm_volume()), 255u32, ConfigSliderKind::BgmVol),
             ("sef_lev", "sef_vol", "sef_vol_f", u32::from(cfg.se_volume()), 255u32, ConfigSliderKind::SeVol),
             ("voc_lev", "voc_vol", "voc_vol_f", u32::from(cfg.voice_volume()), 255u32, ConfigSliderKind::VoiceVol),
             ("auto_lev", "auto_vol", "auto_vol_f", u32::from(cfg.auto_wait_ms()), 3000u32, ConfigSliderKind::AutoWait),
         ] {
-            blit_lwg_layer_at(dst, img, track, 0, 0, 255);
             let k_name = if self.dragging_slider == Some(sl_kind) || self.hovered_control == Some(track) {
                 knob_f
             } else {
@@ -693,7 +683,7 @@ impl SaveScrnOverlay {
             blit_lwg_layer_at(dst, img, name, 0, 0, 255);
         }
 
-        // Page digit (0..9 -> displays `nonbl` layer or digit)
+        // Page digit (0..9 -> displays `nonbl` layer centered inside `number` box)
         if let Some(nb) = nonbl {
             let num_rect = lwg_layer_rect(Some(img), "number", 0, 0, UiRect::new(386, 551, 28, 32));
             let digit_name = self.page.to_string();
@@ -703,25 +693,48 @@ impl SaveScrnOverlay {
                     alpha_channel_mode: 0,
                     ..Default::default()
                 };
-                blit(dst, &dl.surface, &params, (num_rect.x, num_rect.y), None);
+                blit(
+                    dst,
+                    &dl.surface,
+                    &params,
+                    (num_rect.x + dl.x, num_rect.y + dl.y),
+                    None,
+                );
             }
         }
 
+        // Slot layers `0..9` in `savescrn.lwg` and `date` in `saveconf.lwg` are invisible layout markers.
         for (i, &slot_name) in Self::SLOT_NAMES.iter().enumerate() {
             let r = lwg_layer_rect(Some(img), slot_name, 0, 0, Self::slot_rect_fallback(i));
-            blit_lwg_layer_at(dst, img, slot_name, 0, 0, 255);
-            if let Some(hdr) = &self.cached_headers[i] {
-                if let Some(sc) = saveconf {
-                    if let Some(first) = sc.layers.first() {
-                        let params = BlitParams {
-                            blend_mode: 0,
-                            alpha_channel_mode: 0,
-                            ..Default::default()
-                        };
-                        blit(dst, &first.surface, &params, (r.x, r.y), None);
-                    }
+            if self.hovered_btn == Some(slot_name) {
+                if let Ok(hl) = Surface::filled(r.w as u32, r.h as u32, 0x0048_6858) {
+                    let params = BlitParams {
+                        blend_mode: 2,
+                        alpha_channel_mode: 6,
+                        global_alpha: 180,
+                        ..Default::default()
+                    };
+                    blit(dst, &hl, &params, (r.x, r.y), None);
                 }
+            }
+            if let Some(hdr) = &self.cached_headers[i] {
                 if let Some(fs) = fonts {
+                    let slot_num = self.page * 10 + i + 1;
+                    let num_label = format!("No.{slot_num:02}");
+                    render_ascii_or_utf8_label(
+                        dst,
+                        fs,
+                        vfs,
+                        gaiji,
+                        &num_label,
+                        encoding,
+                        13,
+                        0x00C8_DC96,
+                        r.x + 84,
+                        r.y + 54,
+                        68,
+                        22,
+                    );
                     // Story preview (`19px`, DBCS-truncated 26 bytes inside slot card)
                     let title_bytes = hdr.title_bytes_trimmed();
                     if !title_bytes.is_empty() {
@@ -734,9 +747,9 @@ impl SaveScrnOverlay {
                             encoding,
                             19,
                             0x00FF_FFFF,
-                            r.x + 16,
+                            r.x + 84,
                             r.y + 14,
-                            r.w - 32,
+                            r.w - 96,
                             36,
                         );
                     }

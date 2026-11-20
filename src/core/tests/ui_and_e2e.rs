@@ -621,3 +621,117 @@ fn e2e_4_dialogs_hotkeys_vk_f1_and_selmap01_via_c_abi() {
 
     let _ = fs::remove_dir_all(&save_dir);
 }
+
+fn non_black_ratio(bgra: &[u8]) -> f32 {
+    let total = bgra.len() / 4;
+    let non_black = bgra
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|px| px[0] != 0 || px[1] != 0 || px[2] != 0)
+        .count();
+    (non_black as f32) / (total.max(1) as f32)
+}
+
+#[test]
+fn e2e_5_title_bg_1102_storehouse_tbox_anchor_and_touch_cancel() {
+    if !require_real_assets_or_skip(
+        "e2e_5_title_bg_1102_storehouse_tbox_anchor_and_touch_cancel",
+    ) {
+        return;
+    }
+    let font = find_test_gothic_font();
+    let save_dir = fresh_save_dir("e2e5_gfx");
+    let mut cfg = EngineConfig::new(GAME_DIR, &save_dir, LanguageMode::Japanese);
+    cfg.repair_chs_recall_labels = false;
+    let mut eng = Engine::create(cfg).unwrap();
+    eng.load_font_bytes(FontRole::Gothic, font, 0).unwrap();
+
+    // 1. Fresh save Title Screen (0101.gsc) must default vars[7000]=1 and render seasonal BG + art
+    eng.enter_title_screen().unwrap();
+    for _ in 0..80 {
+        eng.tick(50).unwrap();
+    }
+    assert!((1..=4).contains(&eng.vm.state.vars[7000]));
+    let title_bgra = capture_bgra8(&eng);
+    let title_ratio = non_black_ratio(&title_bgra);
+    assert!(
+        title_ratio > 0.70,
+        "0101.gsc Title must render full seasonal BG + characters, got non-black ratio {title_ratio:.3}"
+    );
+
+    // 2. Start New Game -> 0111.gsc sets spr_dir/spr_pos(0,1,1) and jumps to 1102/1100.
+    // Click New Game button on 0101.gsc and advance until storehouse scene (`bg_load(504)`, `spr_load(1, 5040)`).
+    eng.pointer_event(PointerKind::Up, 400, 355).unwrap();
+    for _ in 0..300 {
+        eng.tick(50).unwrap();
+        if eng.status().is_waiting_click {
+            break;
+        }
+    }
+    assert_eq!(eng.vm.state.layers[0].dir_prefix, "grpe");
+
+    // Verify cancelled touch at (-1, -1) does NOT advance WaitClick
+    let pc_before_cancel = eng.vm.state.pc;
+    eng.pointer_event(PointerKind::Up, -1, -1).unwrap();
+    assert_eq!(eng.vm.state.pc, pc_before_cancel);
+
+    // Ensure we enter 1102.gsc and advance through the dark opening lines to `0344: 【五樹】ふぅ…………` + `0504`/`5043`
+    if eng.vm.state.current_script_id() != 1102 {
+        eng.start_game_script(1102).unwrap();
+    }
+    let mut saw_5040 = false;
+    let mut saw_5043 = false;
+    let mut saw_indent_120 = false;
+    for _ in 0..80 {
+        for _ in 0..200 {
+            eng.tick(50).unwrap();
+            if eng.status().is_waiting_click {
+                break;
+            }
+        }
+        if eng.vm.state.tbox.indent_cont == 120 {
+            saw_indent_120 = true;
+        }
+        if eng.vm.state.layers[0].img_id == 504 && eng.vm.state.layers[1].img_id == 5040 {
+            saw_5040 = true;
+            assert!(
+                eng.vm.state.tbox.visible,
+                "TextVoice at 0344 must restore tbox visibility after tbox_show(0,0)"
+            );
+            let bgra = capture_bgra8(&eng);
+            // Verify top-left quadrant (which was solid black before anchor fix!) has non-black BG pixels
+            let mut tl_non_black = 0usize;
+            for y in 0..200usize {
+                for x in 0..300usize {
+                    let off = (y * (GAME_WIDTH as usize) + x) * 4;
+                    if bgra[off] != 0 || bgra[off + 1] != 0 || bgra[off + 2] != 0 {
+                        tl_non_black += 1;
+                    }
+                }
+            }
+            assert!(
+                tl_non_black > 5_000,
+                "0504+5040 top-left quadrant must render properly centered (got {tl_non_black} px)"
+            );
+        }
+        if eng.vm.state.layers[1].img_id == 5043 {
+            saw_5043 = true;
+            let bgra = capture_bgra8(&eng);
+            let ratio = non_black_ratio(&bgra);
+            assert!(ratio > 0.55, "5043 storehouse doorway must fill scene (got {ratio:.3})");
+            break;
+        }
+        if eng.status().is_waiting_click {
+            eng.advance_dialogue_click().unwrap();
+            if eng.status().is_waiting_click {
+                eng.advance_dialogue_click().unwrap();
+            }
+        }
+    }
+    assert!(saw_5040, "1102.gsc must reach 0504+5040 storehouse scene");
+    assert!(saw_indent_120, "1102.gsc must execute 0x63(0,0,120) speaker continuation indent");
+    assert!(saw_5043, "1102.gsc must reach 5043 interior scene");
+
+    let _ = fs::remove_dir_all(&save_dir);
+}

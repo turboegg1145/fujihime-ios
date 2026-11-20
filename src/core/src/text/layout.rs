@@ -91,6 +91,22 @@ pub fn layout_text(
     box_height: i32,
     vertical: bool,
 ) -> Result<TextLayout> {
+    layout_text_with_indent(parsed, fonts, vfs, gaiji_bank, box_width, box_height, vertical, 0, 0)
+}
+
+/// Lay out parsed tokens with first-line and continuation-line horizontal indents (`0x441fe0`, `0x440e20`).
+#[allow(clippy::too_many_arguments)]
+pub fn layout_text_with_indent(
+    parsed: &ParsedText,
+    fonts: &FontSet,
+    vfs: Option<&AssetVfs>,
+    gaiji_bank: &mut GaijiBank,
+    box_width: i32,
+    box_height: i32,
+    vertical: bool,
+    indent_first: i32,
+    indent_cont: i32,
+) -> Result<TextLayout> {
     let mut prepared = Vec::new();
     let mut pending_newlines = 0u32;
 
@@ -180,7 +196,7 @@ pub fn layout_text(
     if vertical {
         layout_vertical(prepared, box_width, box_height)
     } else {
-        layout_horizontal(prepared, box_width, box_height)
+        layout_horizontal(prepared, box_width, box_height, indent_first, indent_cont)
     }
 }
 
@@ -188,6 +204,8 @@ fn layout_horizontal(
     prepared: Vec<PreparedItem>,
     box_width: i32,
     box_height: i32,
+    indent_first: i32,
+    indent_cont: i32,
 ) -> Result<TextLayout> {
     let mut items = Vec::with_capacity(prepared.len());
     let mut cur_y = 0i32;
@@ -206,7 +224,12 @@ fn layout_horizontal(
             line_index += extra_blank_lines as usize;
         }
 
-        let mut cur_x = 0i32;
+        let line_indent = if cur_y == 0 {
+            indent_first.max(0)
+        } else {
+            (indent_first + indent_cont).max(0)
+        };
+        let mut cur_x = line_indent;
         let mut overhang_used = false;
         let mut end = start;
 
@@ -217,7 +240,7 @@ fn layout_horizontal(
             let inc_x = i32::from(prepared[end].glyph.cell_inc_x);
             let next_x = cur_x + inc_x;
             if next_x > box_width {
-                if cur_x == 0 {
+                if cur_x == line_indent {
                     // Single character wider than box: cannot break before first item (`0x442072`).
                     end += 1;
                     break;
@@ -259,7 +282,7 @@ fn layout_horizontal(
             TextAlign::Right => (box_width - line_w).max(0),
         };
 
-        let mut x_cursor = 0i32;
+        let mut x_cursor = line_indent;
         for item in &prepared[start..end] {
             let g = &item.glyph;
             let dst_x = x_cursor + align_offset + g.origin_x;
