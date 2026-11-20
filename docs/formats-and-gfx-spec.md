@@ -337,7 +337,7 @@
 
 ## 5. 全量资产自动化验证结果
 
-验证脚本：[`re/verify_wcg_lwg.py`](file:///home/eggdog/%E9%A1%B9%E7%9B%AE/%E8%85%90%E5%A7%AC/re/verify_wcg_lwg.py)（在隔离容器 `fujihime-re` 中 4 核实跑，耗时 `160.811s`，退出码 `0`，**0 失败**）：
+验证脚本：[`re/verify_wcg_lwg.py`](../re/verify_wcg_lwg.py)（在隔离容器 `fujihime-re` 中 4 核实跑，耗时 `160.811s`，退出码 `0`，**0 失败**）：
 
 | 资产集合 | `.wcg` | `.lwg` (内嵌图层数) | `.msk` | `.bmp` | 尾部 `0x00` 填充流字节数 | 结果 |
 |---|---|---|---|---|---|---|

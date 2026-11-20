@@ -3,6 +3,12 @@ name: CI and iOS 14.4 IPA Build
 on:
   push:
   workflow_dispatch:
+    inputs:
+      assets_release_tag:
+        description: "Optional GitHub Release tag containing fujihime-game-assets-v1.tar to bundle into IPA"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   rust-core-ci:
@@ -150,33 +156,40 @@ jobs:
           echo "MinimumOSVersion=${MIN_OS}"
           test "${MIN_OS}" = "14.4"
 
-      - name: Download game assets from private Release and inject into Payload
+      - name: Prepare Payload and optionally inject game assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ASSETS_RELEASE_TAG: ${{ inputs.assets_release_tag }}
         run: |
           set -euo pipefail
           rm -rf Payload Fujihime-iOS14.4-arm64.ipa /tmp/fujihime-assets
-          mkdir -p Payload /tmp/fujihime-assets
+          mkdir -p Payload
           cp -R src/ios/build/Release-iphoneos/Fujihime.app Payload/Fujihime.app
 
-          gh release download assets-v1 -p 'fujihime-game-assets-v1.tar' -D /tmp/fujihime-assets
-          tar -xf /tmp/fujihime-assets/fujihime-game-assets-v1.tar -C Payload/Fujihime.app
-          rm -rf /tmp/fujihime-assets
+          if [ -n "${ASSETS_RELEASE_TAG}" ]; then
+            echo "Injecting game assets from release tag: ${ASSETS_RELEASE_TAG}"
+            mkdir -p /tmp/fujihime-assets
+            gh release download "${ASSETS_RELEASE_TAG}" -p 'fujihime-game-assets-v1.tar' -D /tmp/fujihime-assets
+            tar -xf /tmp/fujihime-assets/fujihime-game-assets-v1.tar -C Payload/Fujihime.app
+            rm -rf /tmp/fujihime-assets
 
-          APP="Payload/Fujihime.app"
-          for xfl in bgm.xfl grpe.xfl grpf.xfl grpo.xfl grpo_ex.xfl grpo_tp.xfl grpp.xfl grps.xfl scr.xfl voice.xfl wav.xfl; do
-            test -s "${APP}/game/${xfl}" || { echo "ERROR: Missing or empty ${APP}/game/${xfl}" >&2; exit 1; }
-          done
-          test -s "${APP}/game/mov/0001.mpg"
-          test -s "${APP}/game/mov/0002.mpg"
-          test -s "${APP}/game/orig_backup/scr.xfl"
-          test -s "${APP}/game/orig_backup/grpo_tp.xfl"
-          test -d "${APP}/game/grpe" && [ -n "$(ls -A "${APP}/game/grpe")" ]
-          test -d "${APP}/game/grpo_ex" && [ -n "$(ls -A "${APP}/game/grpo_ex")" ]
-          test -d "${APP}/game/grps" && [ -n "$(ls -A "${APP}/game/grps")" ]
-          test -s "${APP}/Fonts/jp_gothic.ttf"
-          test -s "${APP}/Fonts/jp_mincho.ttf"
-          test -s "${APP}/Fonts/chs_hei.ttf" -o -s "${APP}/Fonts/chs_hei.ttc"
+            APP="Payload/Fujihime.app"
+            for xfl in bgm.xfl grpe.xfl grpf.xfl grpo.xfl grpo_ex.xfl grpo_tp.xfl grpp.xfl grps.xfl scr.xfl voice.xfl wav.xfl; do
+              test -s "${APP}/game/${xfl}" || { echo "ERROR: Missing or empty ${APP}/game/${xfl}" >&2; exit 1; }
+            done
+            test -s "${APP}/game/mov/0001.mpg"
+            test -s "${APP}/game/mov/0002.mpg"
+            test -s "${APP}/game/orig_backup/scr.xfl"
+            test -s "${APP}/game/orig_backup/grpo_tp.xfl"
+            test -d "${APP}/game/grpe" && [ -n "$(ls -A "${APP}/game/grpe")" ]
+            test -d "${APP}/game/grpo_ex" && [ -n "$(ls -A "${APP}/game/grpo_ex")" ]
+            test -d "${APP}/game/grps" && [ -n "$(ls -A "${APP}/game/grps")" ]
+            test -s "${APP}/Fonts/jp_gothic.ttf"
+            test -s "${APP}/Fonts/jp_mincho.ttf"
+            test -s "${APP}/Fonts/chs_hei.ttf" -o -s "${APP}/Fonts/chs_hei.ttc"
+          else
+            echo "Building shell IPA without bundled game assets; place game assets in Documents/override or supply assets_release_tag via workflow_dispatch"
+          fi
 
       - name: Package unsigned IPA
         run: zip -r -0 Fujihime-iOS14.4-arm64.ipa Payload

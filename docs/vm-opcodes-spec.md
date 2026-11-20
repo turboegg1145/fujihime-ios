@@ -2,7 +2,7 @@
 
 > **权威基准（Ground Truth）**：所有偏移、位域掩码、数据结构与语义均逆向自原版日文主程序 `game/腐姫ＤＬ/KhimeDL.exe`（SHA-256: `2dfc7b78d32867716ab0406ccbf176b55a76faea1cb9c40feac25c90775222fe`）及原版脚本封包 `game/腐姫ＤＬ/补丁/原版备份/scr.xfl`（341 个 `.gsc`）。汉化版 `scr.xfl`（341 个 `.gsc`）的实测差异与兼容要求已完整标注。
 >
-> **交叉索引**：本文涉及的图像解码（`.wcg`/`.lwg`/`.msk`）、图层合成（`0x436430`）、转场特效（`0x422060`）与 MPEG-1 视频控制（`0x449060`/`0x450720`）底层像素与状态机规格，详见 Phase 1A 规格书 [`docs/formats-and-gfx-spec.md`](file:///home/eggdog/%E9%A1%B9%E7%9B%AE/%E8%85%90%E5%A7%AC/docs/formats-and-gfx-spec.md)。
+> **交叉索引**：本文涉及的图像解码（`.wcg`/`.lwg`/`.msk`）、图层合成（`0x436430`）、转场特效（`0x422060`）与 MPEG-1 视频控制（`0x449060`/`0x450720`）底层像素与状态机规格，详见 Phase 1A 规格书 [`docs/formats-and-gfx-spec.md`](formats-and-gfx-spec.md)。
 >
 > **约定**：所有多字节整数均为 **Little-Endian (LE)**；脚本字节码指针 `pc` 为相对字节码区起始（文件偏移 `0x24`）的字节偏移。
 
@@ -200,7 +200,7 @@ $$\text{calc\_size} = 36 + \text{code\_size} + \text{str\_off\_size} + \text{str
 
 ### 4.4 图形、背景、CG、立绘图层、动画与特效（37 条）
 
-> 所有图层下标 `layer ∈ 0..=99`（`>= 100` 弹出 `'レイヤー指定違反'`，部分多图层指令支持 `layer == 0` 表示全图层或 `layer > 100` 按组号 `layer % 100` 批量匹配 `DAT_0047663a`）。转场/合成细节参见 [`docs/formats-and-gfx-spec.md`](file:///home/eggdog/%E9%A1%B9%E7%9B%AE/%E8%85%90%E5%A7%AC/docs/formats-and-gfx-spec.md)。
+> 所有图层下标 `layer ∈ 0..=99`（`>= 100` 弹出 `'レイヤー指定違反'`，部分多图层指令支持 `layer == 0` 表示全图层或 `layer > 100` 按组号 `layer % 100` 批量匹配 `DAT_0047663a`）。转场/合成细节参见 [`docs/formats-and-gfx-spec.md`](formats-and-gfx-spec.md)。
 
 | Opcode | 总字节 | 助记名 | 操作数签名 | 处理函数 | 341脚本频次 | 精确语义与副作用 |
 |---|---:|---|---|---|---:|---|
@@ -293,7 +293,7 @@ $$\text{calc\_size} = 36 + \text{code\_size} + \text{str\_off\_size} + \text{str
 
 ### 5.1 原版 vs 汉化 V1.0 全量 341 `.gsc` 差异盘点
 
-通过 [`re/verify_gsc.py`](file:///home/eggdog/%E9%A1%B9%E7%9B%AE/%E8%85%90%E5%A7%AC/re/verify_gsc.py) 对 `补丁/原版备份/scr.xfl`（ORIG）与根目录 `scr.xfl`（CHS）逐字节比对：
+通过 [`re/verify_gsc.py`](../re/verify_gsc.py) 对 `补丁/原版备份/scr.xfl`（ORIG）与根目录 `scr.xfl`（CHS）逐字节比对：
 
 1. **字节码与跳转偏移 100% 完全一致（`0` 差异）**：全部 341 个 `.gsc` 的 `code_size`（总计 `1,125,986` 字节）、`68,819` 条指令、跳转目标与数组数据区在原版与汉化版中完全相同。
 2. **文件级差异分类（`85 + 243 + 9 + 4 = 341`）**：
@@ -319,7 +319,7 @@ $$\text{calc\_size} = 36 + \text{code\_size} + \text{str\_off\_size} + \text{str
 
 ## 6. 全量自动化验证结果（341 + 341 `.gsc`）
 
-验证脚本：[`re/verify_gsc.py`](file:///home/eggdog/%E9%A1%B9%E7%9B%AE/%E8%85%90%E5%A7%AC/re/verify_gsc.py)（容器 `fujihime-re` 内执行，退出码 `0`），结构化报告：[`re/evidence/phase1b-vm-opcodes.json`](file:///home/eggdog/%E9%A1%B9%E7%9B%AE/%E8%85%90%E5%A7%AC/re/evidence/phase1b-vm-opcodes.json)。
+验证脚本：[`re/verify_gsc.py`](../re/verify_gsc.py)（容器 `fujihime-re` 内执行，退出码 `0`），结构化报告：[`re/evidence/phase1b-vm-opcodes.json`](../re/evidence/phase1b-vm-opcodes.json)。
 
 | 语料库 | 文件数 | 通过 / 失败 | 字节码总字节 | 总指令数 | 跳转总数（含 EOF） | 字符串总数 / 引用数 | 编码校验 | 未知 Opcode / 截断 / 越界 |
 |---|---:|---:|---:|---:|---:|---:|---|---|
