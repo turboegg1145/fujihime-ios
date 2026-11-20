@@ -1,0 +1,21 @@
+[package]
+name = "fujihime-core"
+version = "0.1.0"
+edition = "2021"
+description = "Core engine for Fujihime ~euthanasia~ (VFS, image decoders, 2D compositor, text, audio, MPEG-1 video)"
+build = "build.rs"
+
+[lib]
+name = "fujihime_core"
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+encoding_rs = "0.8"
+lewton = "0.10"
+thiserror = "2"
+
+[build-dependencies]
+cc = "1"
+
+[dev-dependencies]
+sha2 = "0.10"

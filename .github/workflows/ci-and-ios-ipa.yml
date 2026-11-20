@@ -1,0 +1,189 @@
+name: CI and iOS 14.4 IPA Build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  rust-core-ci:
+    name: Rust Core Tests, Clippy & C11 FFI Header
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install C compiler and open-source CJK test fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc fonts-ipafont-gothic fonts-ipafont-mincho fonts-wqy-zenhei
+
+      - name: Install Rust toolchain with clippy
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src/core
+
+      - name: Run clippy (-D warnings)
+        working-directory: src/core
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Run Rust unit & FFI tests (release)
+        working-directory: src/core
+        run: cargo test --release
+
+      - name: Verify C11 FFI header syntax
+        working-directory: src/core
+        run: gcc -std=c11 -Wall -Wextra -Werror -fsyntax-only include/fujihime_core.h
+
+  build-ios-ipa:
+    name: Build Unsigned iOS 14.4 arm64 IPA
+    runs-on: macos-15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 16.4 (pin iOS 14.4 compatibility)
+        run: |
+          if [ -d /Applications/Xcode_16.4.app/Contents/Developer ]; then
+            sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+          elif [ -d /Applications/Xcode_16.0.app/Contents/Developer ]; then
+            echo "Xcode 16.4 not found; falling back to Xcode 16.0"
+            sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
+          else
+            echo "ERROR: Neither Xcode_16.4.app nor Xcode_16.0.app is installed" >&2
+            ls -la /Applications/Xcode*.app || true
+            exit 1
+          fi
+          xcodebuild -version
+
+      - name: Install Rust toolchain (aarch64-apple-ios)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+
+      - name: Cache Rust iOS build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src/core
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Compile libfujihime_core.a for aarch64-apple-ios (14.4)
+        working-directory: src/core
+        env:
+          IPHONEOS_DEPLOYMENT_TARGET: "14.4"
+        run: |
+          export IPHONEOS_DEPLOYMENT_TARGET=14.4
+          cargo build --release --target aarch64-apple-ios
+          mkdir -p ../ios/Vendor
+          cp target/aarch64-apple-ios/release/libfujihime_core.a ../ios/Vendor/libfujihime_core.a
+          lipo -info ../ios/Vendor/libfujihime_core.a
+
+      - name: Generate Xcode project and build unsigned Release .app
+        working-directory: src/ios
+        env:
+          IPHONEOS_DEPLOYMENT_TARGET: "14.4"
+        run: |
+          export IPHONEOS_DEPLOYMENT_TARGET=14.4
+          xcodegen generate
+          xcodebuild \
+            -project Fujihime.xcodeproj \
+            -scheme Fujihime \
+            -configuration Release \
+            -sdk iphoneos \
+            -arch arm64 \
+            IPHONEOS_DEPLOYMENT_TARGET=14.4 \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CONFIGURATION_BUILD_DIR="$PWD/build/Release-iphoneos" \
+            build
+
+      - name: 6-point iOS 14.4 Mach-O & Info.plist verification
+        run: |
+          set -euo pipefail
+          APP_DIR="src/ios/build/Release-iphoneos/Fujihime.app"
+          BIN="${APP_DIR}/Fujihime"
+          PLIST="${APP_DIR}/Info.plist"
+
+          test -f "${BIN}"
+          test -f "${PLIST}"
+
+          echo "=== [1/6] Architecture check (arm64) ==="
+          FILE_OUT="$(file "${BIN}")"
+          echo "${FILE_OUT}"
+          echo "${FILE_OUT}" | grep -q "arm64"
+
+          echo "=== [2/6] Deployment target check (minos 14.4) ==="
+          OTOOL_L="$(otool -l "${BIN}")"
+          echo "${OTOOL_L}" | grep -A4 -E "LC_BUILD_VERSION|LC_VERSION_MIN_IPHONEOS"
+          echo "${OTOOL_L}" | grep -qE "minos 14\.4|version 14\.4"
+
+          echo "=== [3/6] Chained fixups check (must NOT contain LC_DYLD_CHAINED_FIXUPS) ==="
+          if echo "${OTOOL_L}" | grep -q "LC_DYLD_CHAINED_FIXUPS"; then
+            echo "ERROR: Binary contains LC_DYLD_CHAINED_FIXUPS (breaks iOS 14.4 dyld)!" >&2
+            exit 1
+          fi
+
+          echo "=== [4/6] Swift Concurrency check (must NOT link libswift_Concurrency) ==="
+          OTOOL_LIBS="$(otool -L "${BIN}")"
+          echo "${OTOOL_LIBS}"
+          if echo "${OTOOL_LIBS}" | grep -q "libswift_Concurrency"; then
+            echo "ERROR: Binary links libswift_Concurrency!" >&2
+            exit 1
+          fi
+
+          echo "=== [5/6] Non-system @rpath dylib check ==="
+          if echo "${OTOOL_LIBS}" | grep -q "@rpath"; then
+            echo "ERROR: Binary links non-system @rpath dylib!" >&2
+            exit 1
+          fi
+
+          echo "=== [6/6] Info.plist MinimumOSVersion == 14.4 check ==="
+          plutil -p "${PLIST}"
+          MIN_OS="$(plutil -extract MinimumOSVersion raw "${PLIST}")"
+          echo "MinimumOSVersion=${MIN_OS}"
+          test "${MIN_OS}" = "14.4"
+
+      - name: Download game assets from private Release and inject into Payload
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          rm -rf Payload Fujihime-iOS14.4-arm64.ipa /tmp/fujihime-assets
+          mkdir -p Payload /tmp/fujihime-assets
+          cp -R src/ios/build/Release-iphoneos/Fujihime.app Payload/Fujihime.app
+
+          gh release download assets-v1 -p 'fujihime-game-assets-v1.tar' -D /tmp/fujihime-assets
+          tar -xf /tmp/fujihime-assets/fujihime-game-assets-v1.tar -C Payload/Fujihime.app
+          rm -rf /tmp/fujihime-assets
+
+          APP="Payload/Fujihime.app"
+          for xfl in bgm.xfl grpe.xfl grpf.xfl grpo.xfl grpo_ex.xfl grpo_tp.xfl grpp.xfl grps.xfl scr.xfl voice.xfl wav.xfl; do
+            test -s "${APP}/game/${xfl}" || { echo "ERROR: Missing or empty ${APP}/game/${xfl}" >&2; exit 1; }
+          done
+          test -s "${APP}/game/mov/0001.mpg"
+          test -s "${APP}/game/mov/0002.mpg"
+          test -s "${APP}/game/orig_backup/scr.xfl"
+          test -s "${APP}/game/orig_backup/grpo_tp.xfl"
+          test -d "${APP}/game/grpe" && [ -n "$(ls -A "${APP}/game/grpe")" ]
+          test -d "${APP}/game/grpo_ex" && [ -n "$(ls -A "${APP}/game/grpo_ex")" ]
+          test -d "${APP}/game/grps" && [ -n "$(ls -A "${APP}/game/grps")" ]
+          test -s "${APP}/Fonts/jp_gothic.ttf"
+          test -s "${APP}/Fonts/jp_mincho.ttf"
+          test -s "${APP}/Fonts/chs_hei.ttf" -o -s "${APP}/Fonts/chs_hei.ttc"
+
+      - name: Package unsigned IPA
+        run: zip -r -0 Fujihime-iOS14.4-arm64.ipa Payload
+
+      - name: Upload Fujihime iOS 14.4 arm64 IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Fujihime-iOS14.4-arm64-IPA
+          path: Fujihime-iOS14.4-arm64.ipa
+          compression-level: 0

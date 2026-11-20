@@ -1,0 +1,998 @@
+{
+  "phase": "Phase 1C",
+  "ground_truth": {
+    "binary": "game/腐姫ＤＬ/KhimeDL.exe",
+    "binary_sha256": "2dfc7b78d32867716ab0406ccbf176b55a76faea1cb9c40feac25c90775222fe",
+    "chs_comparison_binary": "game/腐姫ＤＬ/KhimeDL_CHS.exe",
+    "chs_comparison_sha256": "522bec3e93340ffd3bdb24ba98cfb775f80df9d85460819da840d824ad4822a8",
+    "orig_scripts_backup": "game/腐姫ＤＬ/补丁/原版备份/scr.xfl"
+  },
+  "unknowns_status": {
+    "UNK-05": {
+      "status": "RESOLVED",
+      "summary": "Font creation, 6 glyph rasterizer modes, mode 3 monospace override & inverted alpha, DBCS-safe caret control codes, 58 kinsoku rules, 50ms frame timing, and 100% coverage of 341 orig + 341 chs .gsc strings."
+    },
+    "UNK-07": {
+      "status": "RESOLVED",
+      "summary": "WndProc (0x41a2a0), VK_F1 (0x41e490), full key/mouse bindings, all 9 top-level UI scenes + selmap with exact LWG coordinates, CG (102 sets/266 imgs) & Scene (79 + 0399.gsc dual mechanism), 10 MessageBoxA + 7 confirm (0x445e90) callsites, and 31 EXE diff chunks."
+    },
+    "UNK-08": {
+      "status": "RESOLVED",
+      "summary": "2007 DL KhDLsave.dat (0x814 header + 6000B global vars + dynamic kidoku/flag bitmaps), 2002 CD KhDLsave.dat (206024 B incompatible matrix format), and 2007 DL KhDLsave%02d.dat (75026 B fixed dual-snapshot without thumbnail) verified by SHA-256 round-trip."
+    },
+    "UNK-09": {
+      "status": "RESOLVED",
+      "summary": "DirectSound 4-slot mixer, exact integer dB volume formulas, 100ms fade timer (150 steps default), vorbis.acm 0xffffffff dummy page stripping, and 3084/3084 full PCM decode verification."
+    }
+  },
+  "UNK-05_text_rendering": {
+    "font_selection_va": "0x441b00",
+    "font_strings": {
+      "family_0_va": "0x46d110",
+      "family_0_orig": "ＭＳ ゴシック",
+      "family_0_chs": "黑体",
+      "family_1_va": "0x46e194",
+      "family_1_orig": "ＭＳ 明朝",
+      "family_1_chs": "黑体"
+    },
+    "charset_patch_vas": [
+      "0x40365a",
+      "0x44c733",
+      "0x44f20e",
+      "0x44f24f",
+      "0x44f58b",
+      "0x44f5c9",
+      "0x44f8de",
+      "0x44f913",
+      "0x44fcd3",
+      "0x44fff0",
+      "0x450256"
+    ],
+    "charset_orig": "0x80 (SHIFTJIS_CHARSET)",
+    "charset_chs": "0x86 (GB2312_CHARSET)",
+    "scale_formula_0x441b00": {
+      "0": "base / 2",
+      "1": "base",
+      "2": "(base * 3) / 2",
+      "3": "base * 2",
+      "default_ge_4": "base * (scale - 1)"
+    },
+    "rasterizer_dispatcher_va": "0x44f080",
+    "rasterizer_modes": {
+      "0": {
+        "va": "0x44f1b0",
+        "api": "GetGlyphOutlineA(GGO_BITMAP=1)",
+        "vert_at_font": true,
+        "mat2": "90deg CW (0,-1,1,0) if vert",
+        "shadow": null
+      },
+      "1": {
+        "va": "0x44f530",
+        "api": "GetGlyphOutlineA(GGO_GRAY8_BITMAP=6)",
+        "vert_at_font": true,
+        "blend": "mode=0x16 color fade using src_A",
+        "shadow": null
+      },
+      "2": {
+        "va": "0x44f880",
+        "api": "GetGlyphOutlineA(GGO_BITMAP=1)",
+        "vert_at_font": true,
+        "shadow": "(+3,+3) black drop shadow"
+      },
+      "3": {
+        "va": "0x44fca0",
+        "default_for": "main_dialogue (set at 0x440d52 inside 0x440cf0)",
+        "api": "GetGlyphOutlineA(GGO_GRAY8_BITMAP=6)",
+        "mat2": "identity (horizontal only)",
+        "alpha_encoding": "inverted_alpha = (~((gray * 255) >> 6)) & 0xFF",
+        "blend": "mode=0 sub=0 (Porter-Duff Over)",
+        "shadow": null,
+        "monospace_override_va": "0x44fe4b..0x44fe98",
+        "monospace_rule": "gmCellIncY = font_h; gmCellIncX = is_dbcs ? font_h : (font_h >> 1)"
+      },
+      "4": {
+        "va": "0x44ff30",
+        "api": "TextOutA",
+        "used_by": "^a animated glyph (0x441eb0)",
+        "shadow": null
+      },
+      "5": {
+        "va": "0x450190",
+        "api": "TextOutA",
+        "shadow": "(+3,+3) black drop shadow"
+      }
+    },
+    "caret_parser_vas": {
+      "normal": "0x441180",
+      "instant_skip": "0x4416d0"
+    },
+    "caret_palette_0x441180": {
+      "b": "0x2020FF",
+      "g": "0x7FDFA5",
+      "k": "0x000000",
+      "o": "0xFAA25A",
+      "p": "0xF8B1EF",
+      "r": "0xB73333",
+      "s": "0x79F1F2",
+      "v": "0xC187F6",
+      "w": "0xFFFFFF",
+      "y": "0xFFDE00",
+      "0..9": "*(u32*)(this + 0xf0 + digit * 4)"
+    },
+    "layout_and_timing": {
+      "layout_va": "0x441fe0",
+      "line_gap_px": 5,
+      "tbox_bg_alpha": "0x80 (0x417100)",
+      "backlog_capacity": 200,
+      "speaker_slot_count": 10,
+      "speaker_font_base": 15,
+      "save_preview_font_base": 19,
+      "timer_period_ms": 50,
+      "speed_config_values_0x47137a": {
+        "slow": 4,
+        "normal": 1,
+        "instant": 0
+      },
+      "auto_wait_default_ms_0x471394": 1500,
+      "caret_d_formula": "if base_speed != 0: delay = 0 if digit=='0' else (base_speed - 2 + 2*digit); else 0",
+      "tbox_lwg_rects": {
+        "tbox00": {
+          "canvas": [
+            800,
+            144
+          ],
+          "text": [
+            68,
+            26,
+            630,
+            108
+          ],
+          "wait": [
+            728,
+            113,
+            24,
+            23
+          ]
+        },
+        "tbox01": {
+          "canvas": [
+            800,
+            163
+          ],
+          "text": [
+            68,
+            27,
+            630,
+            108
+          ],
+          "wait": [
+            728,
+            114,
+            24,
+            23
+          ]
+        },
+        "tbox11..14": {
+          "canvas": [
+            556,
+            183
+          ],
+          "text": [
+            45,
+            0,
+            466,
+            159
+          ],
+          "wait": [
+            510,
+            143,
+            24,
+            23
+          ]
+        }
+      }
+    },
+    "kinsoku_va_range": "0x441bf0..0x441e98",
+    "kinsoku_line_start_forbidden_46": {
+      "ascii_hex": [
+        "0x20",
+        "0x27",
+        "0x22",
+        "0x2c",
+        "0x2e",
+        "0x3f",
+        "0x21",
+        "0x29",
+        "0x7d",
+        "0x5d"
+      ],
+      "sjis_hex": [
+        "0x8140",
+        "0x8141",
+        "0x8142",
+        "0x8143",
+        "0x8144",
+        "0x8148",
+        "0x8149",
+        "0x815b",
+        "0x8160",
+        "0x8163",
+        "0x816a",
+        "0x816c",
+        "0x816e",
+        "0x8170",
+        "0x8172",
+        "0x8174",
+        "0x8176",
+        "0x8178",
+        "0x817a",
+        "0x8166",
+        "0x8168",
+        "0x82c1",
+        "0x829f",
+        "0x82a1",
+        "0x82a3",
+        "0x82a5",
+        "0x82a7",
+        "0x82e1",
+        "0x82e3",
+        "0x82e5",
+        "0x8340",
+        "0x8342",
+        "0x8344",
+        "0x8346",
+        "0x8348",
+        "0x8383",
+        "0x8385",
+        "0x8387"
+      ]
+    },
+    "kinsoku_line_end_forbidden_12": {
+      "sjis_hex": [
+        "0x8165",
+        "0x8167",
+        "0x8169",
+        "0x816b",
+        "0x816d",
+        "0x816f",
+        "0x8171",
+        "0x8173",
+        "0x8175",
+        "0x8177",
+        "0x8179",
+        "0x814a"
+      ]
+    },
+    "caret_corpus_verification": {
+      "gaiji_assets_in_grps": [
+        "gf001.wcg",
+        "gf002.wcg",
+        "gf003.wcg",
+        "gf004.wcg",
+        "gf005.wcg",
+        "gf006.wcg",
+        "gf007.wcg",
+        "gf008.wcg",
+        "gf009.wcg",
+        "gf010.wcg",
+        "gf999.wcg"
+      ],
+      "gaiji_dimensions": {
+        "gf001.wcg": [
+          186,
+          34
+        ],
+        "gf002.wcg": [
+          186,
+          34
+        ],
+        "gf003.wcg": [
+          186,
+          34
+        ],
+        "gf004.wcg": [
+          186,
+          34
+        ],
+        "gf005.wcg": [
+          186,
+          34
+        ],
+        "gf006.wcg": [
+          186,
+          34
+        ],
+        "gf007.wcg": [
+          186,
+          34
+        ],
+        "gf008.wcg": [
+          186,
+          34
+        ],
+        "gf009.wcg": [
+          186,
+          34
+        ],
+        "gf010.wcg": [
+          186,
+          34
+        ],
+        "gf999.wcg": [
+          186,
+          34
+        ]
+      },
+      "corpora": {
+        "orig": {
+          "scripts_scanned": 341,
+          "total_caret_tokens": 4719,
+          "unique_tokens": 21,
+          "handler_counts": {
+            "^n": 3610,
+            "^g": 682,
+            "^c": 224,
+            "^f": 127,
+            "^m": 57,
+            "^d": 18,
+            "DEFAULT_DROP_2B": 1
+          },
+          "token_counts": {
+            "^n": 3610,
+            "^g001": 287,
+            "^fm": 127,
+            "^cr": 97,
+            "^g008": 91,
+            "^cg": 82,
+            "^g007": 69,
+            "^g009": 61,
+            "^m": 57,
+            "^g005": 48,
+            "^cw": 45,
+            "^g002": 36,
+            "^g010": 28,
+            "^g004": 25,
+            "^g999": 16,
+            "^d0": 12,
+            "^g006": 12,
+            "^g003": 9,
+            "^d3": 3,
+            "^d5": 3,
+            "^\\xdd": 1
+          },
+          "gaiji_refs": {
+            "gf001.wcg": 287,
+            "gf008.wcg": 91,
+            "gf007.wcg": 69,
+            "gf009.wcg": 61,
+            "gf005.wcg": 48,
+            "gf002.wcg": 36,
+            "gf010.wcg": 28,
+            "gf004.wcg": 25,
+            "gf999.wcg": 16,
+            "gf006.wcg": 12,
+            "gf003.wcg": 9
+          },
+          "default_drop_2b_hits": [
+            {
+              "script": "2058.gsc",
+              "str_idx": 22,
+              "token": "^\\xdd"
+            }
+          ],
+          "unsupported_hits": [],
+          "missing_gaiji_assets": []
+        },
+        "chs": {
+          "scripts_scanned": 341,
+          "total_caret_tokens": 4076,
+          "unique_tokens": 20,
+          "handler_counts": {
+            "^n": 2969,
+            "^g": 682,
+            "^c": 223,
+            "^f": 127,
+            "^m": 57,
+            "^d": 18
+          },
+          "token_counts": {
+            "^n": 2969,
+            "^g001": 287,
+            "^fm": 127,
+            "^cr": 97,
+            "^g008": 91,
+            "^cg": 82,
+            "^g007": 69,
+            "^g009": 61,
+            "^m": 57,
+            "^g005": 48,
+            "^cw": 44,
+            "^g002": 36,
+            "^g010": 28,
+            "^g004": 25,
+            "^g999": 16,
+            "^d0": 12,
+            "^g006": 12,
+            "^g003": 9,
+            "^d3": 3,
+            "^d5": 3
+          },
+          "gaiji_refs": {
+            "gf001.wcg": 287,
+            "gf008.wcg": 91,
+            "gf007.wcg": 69,
+            "gf009.wcg": 61,
+            "gf005.wcg": 48,
+            "gf002.wcg": 36,
+            "gf010.wcg": 28,
+            "gf004.wcg": 25,
+            "gf999.wcg": 16,
+            "gf006.wcg": 12,
+            "gf003.wcg": 9
+          },
+          "default_drop_2b_hits": [],
+          "unsupported_hits": [],
+          "missing_gaiji_assets": []
+        }
+      }
+    }
+  },
+  "UNK-07_input_ui_popups": {
+    "wndproc_va": "0x41a2a0",
+    "vk_f1_handler_va": "0x41e490",
+    "vk_f1_behavior": "Calls RSDebuger.dll!BeginDebug via DAT_0048318c if non-null (always 0 in release)",
+    "top_level_dispatcher_va": "0x41d010",
+    "scenes": [
+      {
+        "id": 1,
+        "name": "Title",
+        "ptr_va": "0x4712c0",
+        "init_va": "0x4264d0",
+        "startup_movies": [
+          "0002.mpg",
+          "0001.mpg"
+        ],
+        "unlock_me06": "vars[7000] != 0"
+      },
+      {
+        "id": 2,
+        "name": "MainGame_ADV",
+        "ptr_va": "0x4712c2",
+        "init_va": "0x419800",
+        "layers": 100,
+        "gauges": 10,
+        "compane_size": [
+          39,
+          106
+        ],
+        "selmap_va": "0x4124a0"
+      },
+      {
+        "id": 3,
+        "name": "TitleLoad_SaveScrn",
+        "ptr_va": "0x4712c6",
+        "init_va": "0x41cdb0",
+        "pages": 10,
+        "slots_per_page": 10,
+        "total_slots": 100
+      },
+      {
+        "id": 4,
+        "name": "Config_ConfScrn",
+        "ptr_va": "0x4712ce",
+        "init_va": "0x4182b0",
+        "lwg_layers": 57
+      },
+      {
+        "id": 5,
+        "name": "CG_Gallery",
+        "ptr_va": "0x4712c8",
+        "init_va": "0x41bb50",
+        "table_va": "0x4648a8",
+        "stride_bytes": 22,
+        "tabs": 7,
+        "sets_total": 102,
+        "images_total": 266,
+        "tab_set_counts": [
+          12,
+          10,
+          17,
+          11,
+          12,
+          25,
+          15
+        ],
+        "tab6_path_rule": "./grpo/%04d vs ./grpe/%04d"
+      },
+      {
+        "id": 6,
+        "name": "Scene_Replay",
+        "ptr_va": "0x4712ca",
+        "init_va": "0x425410",
+        "table_va": "0x46db08",
+        "stride_bytes": 6,
+        "tabs": 7,
+        "scenes_total": 79,
+        "tab_scene_counts": [
+          12,
+          12,
+          15,
+          11,
+          11,
+          18,
+          0
+        ],
+        "script_hub": "0399.gsc + 9 scripts labels 8011..8031 (zeroed in CHS scr.xfl)"
+      },
+      {
+        "id": 7,
+        "name": "Music_Mode",
+        "ptr_va": "0x4712cc",
+        "init_va": "0x41e590",
+        "max_slots": 20,
+        "dl_missing_assets": [
+          "grps/muscmenu.lwg",
+          "bgm/Track01.wav",
+          "bgm/Track02.wav"
+        ]
+      },
+      {
+        "id": 8,
+        "name": "Extra_Menu",
+        "ptr_va": "0x4712c4",
+        "init_va": "0x419210",
+        "buttons": {
+          "top_ex01": [
+            431,
+            274
+          ],
+          "top_ex02": [
+            431,
+            310
+          ],
+          "top_ex03": [
+            431,
+            346
+          ],
+          "top_ex04_script9000": [
+            431,
+            382
+          ],
+          "top_exre_x": 573
+        },
+        "note": "9000.gsc absent in DL scr.xfl (9001.gsc exists)"
+      },
+      {
+        "id": 9,
+        "name": "Subscene_DLL",
+        "ptr_va": "0x4712d0",
+        "init_va": "0x418530",
+        "opcode": "0x19 (0 uses in 341 scripts)"
+      }
+    ],
+    "messageboxa_direct_callsites_10": [
+      {
+        "va": "0x41d3e9",
+        "flags": "MB_OK",
+        "caption_orig": "お知らせ",
+        "caption_chs": "通知"
+      },
+      {
+        "va": "0x41d730",
+        "flags": "MB_YESNO|MB_ICONQUESTION (0x24)",
+        "purpose": "generic confirm fallback"
+      },
+      {
+        "va": "0x4214b2",
+        "flags": "MB_OK",
+        "caption_orig": "コンパイルエラー",
+        "caption_chs": "汇编错误"
+      },
+      {
+        "va": "0x421566",
+        "flags": "MB_OK",
+        "caption_orig": "スクリプトネストオーバーフロー",
+        "caption_chs": "脚本文字数过多"
+      },
+      {
+        "va": "0x42163f",
+        "flags": "MB_OK",
+        "caption_orig": "スクリプトネストオーバーフロー",
+        "caption_chs": "脚本文字数过多"
+      },
+      {
+        "va": "0x4216cf",
+        "flags": "MB_OK",
+        "caption_orig": "スクリプトネストアンダーフロー",
+        "caption_chs": "脚本文字数不足"
+      },
+      {
+        "va": "0x4218c3",
+        "flags": "MB_OK",
+        "caption_orig": "レイヤー指定違反",
+        "caption_chs": "层指定违法"
+      },
+      {
+        "va": "0x422a1f",
+        "flags": "MB_OK",
+        "caption_orig": "テキストフォーマットエラー",
+        "caption_chs": "文本格式错误"
+      },
+      {
+        "va": "0x422baa",
+        "flags": "MB_OK",
+        "caption_orig": "テキストフォーマットエラー",
+        "caption_chs": "文本格式错误"
+      },
+      {
+        "va": "0x445ebd",
+        "flags": "MB_YESNO|MB_ICONQUESTION (0x24)",
+        "purpose": "0x445e90 confirm dialog fallback (enddlg absent in grps.xfl)"
+      }
+    ],
+    "confirm_0x445e90_callsites_7": [
+      {
+        "va": "0x418e7a",
+        "context": "Config -> Title",
+        "caption_orig": "確認",
+        "text_orig": "タイトル画面に戻ります。\nよろしいですか？",
+        "caption_chs": "确认",
+        "text_chs": "接下来要回到标题画面。\n这样可以吗？"
+      },
+      {
+        "va": "0x418f98",
+        "context": "Config/SaveScrn -> Overwrite",
+        "caption_orig": "確認",
+        "text_orig": "セーブデータを上書きします。\nよろしいですか？",
+        "caption_chs": "确认",
+        "text_chs": "接下来要覆盖原存档。\n这样可以吗？"
+      },
+      {
+        "va": "0x419051",
+        "context": "Config/LoadScrn -> Load",
+        "caption_orig": "確認",
+        "text_orig": "セーブデータをロードします。\nよろしいですか？",
+        "caption_chs": "确认",
+        "text_chs": "接下来要读取存档。\n这样可以吗？"
+      },
+      {
+        "va": "0x41b448",
+        "context": "In-game SaveScrn -> Overwrite",
+        "caption_orig": "確認",
+        "text_orig": "セーブデータを上書きします。\nよろしいですか？"
+      },
+      {
+        "va": "0x41b501",
+        "context": "In-game LoadScrn -> Load",
+        "caption_orig": "確認",
+        "text_orig": "セーブデータをロードします。\nよろしいですか？"
+      },
+      {
+        "va": "0x41b5ea",
+        "context": "In-game -> Title",
+        "caption_orig": "確認",
+        "text_orig": "タイトル画面に戻ります。\nよろしいですか？"
+      },
+      {
+        "va": "0x44753a",
+        "context": "SC_CLOSE / Title Exit",
+        "caption_orig": "終了確認",
+        "text_orig": "本当にゲームを終了しますか？",
+        "caption_chs": "确认结束",
+        "text_chs": "真的要结束游戏吗？"
+      }
+    ],
+    "exe_diff_chunks_total": 31,
+    "exe_diff_breakdown": {
+      "charset_patches": 11,
+      "string_and_rsrc_patches": 20,
+      "rsrc_credit_va": "0x4a5fc2",
+      "rsrc_credit_chs": "赤之森汉化组@2008-2009"
+    }
+  },
+  "UNK-08_save_formats": {
+    "dl_2007_global": {
+      "filename": "KhDLsave.dat",
+      "read_write_vas": [
+        "0x41dcd0",
+        "0x41dd70"
+      ],
+      "sections": [
+        {
+          "offset": "0x0000",
+          "bytes": 2068,
+          "mem_va": "0x471378",
+          "desc": "0x3a B config flags/volumes/auto_wait + 10x201 B global strings"
+        },
+        {
+          "offset": "0x0814",
+          "bytes": 6000,
+          "mem_va": "DAT_00471368+14000",
+          "desc": "vars[7000..9999] (3000 x u16)"
+        },
+        {
+          "offset": "0x1F84",
+          "bytes": "variable (4 + sum)",
+          "mem_va": "DAT_004712b8",
+          "desc": "kidoku map<u16, bitmap> via 0x427490"
+        },
+        {
+          "offset": "tail",
+          "bytes": "variable (4 + sum)",
+          "mem_va": "DAT_004712bc",
+          "desc": "extended global bitmap via 0x427490"
+        }
+      ]
+    },
+    "cd_2002_global": {
+      "filename": "game/腐姫ＤＬ/补丁/全CG档/KhDLsave.dat",
+      "total_bytes": 206024,
+      "compatible_with_dl_exe": false,
+      "sections": [
+        {
+          "offset": "0x0000",
+          "bytes": 24,
+          "desc": "12 x u16 config header"
+        },
+        {
+          "offset": "0x0018",
+          "bytes": 6000,
+          "desc": "vars[7000..9999]"
+        },
+        {
+          "offset": "0x1788",
+          "bytes": 200000,
+          "desc": "10000 x 20 B fixed kidoku bitmap matrix"
+        }
+      ]
+    },
+    "dl_2007_slot": {
+      "filename": "KhDLsave%02d.dat",
+      "read_write_vas": [
+        "0x41dff0",
+        "0x41de70"
+      ],
+      "total_bytes": 75026,
+      "has_thumbnail": false,
+      "sections": [
+        {
+          "offset": "0x0000",
+          "bytes": 42,
+          "desc": "8 x u16 (wYear, wMonth, wDay, wHour, wMinute, vars[1..3]) + 26 B DBCS preview text"
+        },
+        {
+          "offset": "0x002A",
+          "bytes": 23492,
+          "mem_va": "0x471b8c..0x477750",
+          "desc": "Primary engine state snapshot"
+        },
+        {
+          "offset": "0x5BEE",
+          "bytes": 14000,
+          "mem_va": "DAT_00471368",
+          "desc": "Primary local vars[0..6999]"
+        },
+        {
+          "offset": "0x929E",
+          "bytes": 23492,
+          "mem_va": "0x477750..0x47d314",
+          "desc": "Rollback engine state snapshot"
+        },
+        {
+          "offset": "0xEE62",
+          "bytes": 14000,
+          "desc": "Rollback local vars[0..6999]"
+        }
+      ]
+    },
+    "save_roundtrip_verification": {
+      "real_fullcg_save": {
+        "path": "game/腐姫ＤＬ/补丁/全CG档/KhDLsave.dat",
+        "size_bytes": 206024,
+        "format": "2002_cd_global",
+        "sha256": "78ceb006b10ac36837da0c432f74dd0b3b4e2de04dab310fb8b0d7d630b3cc69",
+        "roundtrip_sha256": "78ceb006b10ac36837da0c432f74dd0b3b4e2de04dab310fb8b0d7d630b3cc69",
+        "roundtrip_match": true,
+        "header_u16": [
+          0,
+          0,
+          1,
+          1,
+          1,
+          0,
+          1,
+          0,
+          0,
+          32,
+          0,
+          0
+        ],
+        "nonzero_vars_count": 309,
+        "nonzero_vars_range": [
+          7001,
+          9999
+        ],
+        "nonzero_vars_head": [
+          [
+            7001,
+            1
+          ],
+          [
+            7006,
+            11
+          ],
+          [
+            7901,
+            1
+          ],
+          [
+            7902,
+            1
+          ],
+          [
+            7904,
+            1
+          ],
+          [
+            7909,
+            1
+          ],
+          [
+            7951,
+            1
+          ],
+          [
+            7952,
+            1
+          ]
+        ],
+        "nonzero_kidoku_script_count": 8,
+        "nonzero_kidoku_max_script_id": 8035
+      },
+      "dl_2007_global_selftest": {
+        "size_bytes": 8116,
+        "sha256": "ab1a52897d06c2f2ddd19aa91ca88c968c6ad4a2104b5195820c907eb8ae020e",
+        "roundtrip_match": true
+      },
+      "dl_2007_slot_selftest": {
+        "size_bytes": 75026,
+        "sha256": "f83ffacb8f4530c166a86693d7680933365cf9b96b39867fce0b85902dbca45e",
+        "roundtrip_match": true
+      }
+    }
+  },
+  "UNK-09_audio": {
+    "channels_va": "0x445aa0",
+    "channels": {
+      "bgm_crossfade_mgr": "this+0x1a8 (2 slots toggled by +0xc)",
+      "se0_loop": "this+0x1ac (0x41e300 / 0x424b90)",
+      "voice": "this+0x1b0 (0x41e370)",
+      "se1_ui": "this+0x1b4 (0x41e300)"
+    },
+    "volume_formulas": {
+      "se_voice_0x448d00": "mb = ((vol_0_255 - 255) * 5300) // 255  # -5300..0, clamped [-5000, 0] at 0x45a200",
+      "bgm_0x448fd0": "mb = ((vol_0_255 - 255) * 3000) // 255       # -3000..0, clamped [-5000, 0] at 0x45a200",
+      "mute_0x459fe0": "IDirectSoundBuffer::SetVolume(-10000)"
+    },
+    "fade_timer": {
+      "vas": [
+        "0x459a80",
+        "0x45efd0",
+        "0x45a7f0",
+        "0x458d50"
+      ],
+      "tick_ms": 100,
+      "default_total_steps": 150,
+      "fade_in_formula": "((target_mb + 5000) * step) // total_steps - 5000",
+      "fade_out_formula": "((target_mb + 5000) * (total_steps - step)) // total_steps - 5000"
+    },
+    "vorbis_acm_quirk": "All 3084 entries use wFormatTag=0x6771 and interleave/append dummy OggS pages (serial=0xFFFFFFFF, body=0, granule=0) that must be stripped before standard libvorbis/lewton/symphonia decoding.",
+    "audio_decode_verification": {
+      "total_entries": 3084,
+      "total_passed": 3084,
+      "total_failed": 0,
+      "total_samples": 819147710,
+      "total_duration_sec": 18574.778,
+      "total_dummy_pages_stripped": 2068481,
+      "total_holes": 0,
+      "total_fact_mismatches": 0,
+      "total_missing_eos": 0,
+      "archives": {
+        "bgm.xfl": {
+          "entries": 21,
+          "passed": 21,
+          "failed": 0,
+          "channels": {
+            "2": 21
+          },
+          "sample_rates": {
+            "44100": 21
+          },
+          "format_tags": {
+            "0x6771": 21
+          },
+          "total_samples": 144435732,
+          "duration_sec": 3275.187,
+          "dummy_pages_stripped": 511039,
+          "real_pages": 24984,
+          "holes": 0,
+          "fact_mismatches": 0,
+          "missing_eos": 0,
+          "min_duration_sec": 69.96,
+          "max_duration_sec": 306.4533,
+          "entry_names": [
+            "Track03.wav",
+            "Track04.wav",
+            "Track05.wav",
+            "Track06.wav",
+            "Track07.wav",
+            "Track08.wav",
+            "Track09.wav",
+            "Track10.wav",
+            "Track11.wav",
+            "Track12.wav",
+            "Track13.wav",
+            "Track14.wav",
+            "Track15.wav",
+            "Track16.wav",
+            "Track17.wav",
+            "Track18.wav",
+            "Track19.wav",
+            "Track20.wav",
+            "Track21.wav",
+            "Track22.wav",
+            "Track23.wav"
+          ]
+        },
+        "voice.xfl": {
+          "entries": 3015,
+          "passed": 3015,
+          "failed": 0,
+          "channels": {
+            "1": 3015
+          },
+          "sample_rates": {
+            "44100": 3015
+          },
+          "format_tags": {
+            "0x6771": 3015
+          },
+          "total_samples": 627223074,
+          "duration_sec": 14222.745,
+          "dummy_pages_stripped": 1442201,
+          "real_pages": 64766,
+          "holes": 0,
+          "fact_mismatches": 0,
+          "missing_eos": 0,
+          "min_duration_sec": 0.5324,
+          "max_duration_sec": 27.4308
+        },
+        "wav.xfl": {
+          "entries": 48,
+          "passed": 48,
+          "failed": 0,
+          "channels": {
+            "1": 48
+          },
+          "sample_rates": {
+            "44100": 48
+          },
+          "format_tags": {
+            "0x6771": 48
+          },
+          "total_samples": 47488904,
+          "duration_sec": 1076.846,
+          "dummy_pages_stripped": 115241,
+          "real_pages": 4346,
+          "holes": 0,
+          "fact_mismatches": 0,
+          "missing_eos": 0,
+          "min_duration_sec": 0.64,
+          "max_duration_sec": 164.4463
+        }
+      },
+      "failures": [],
+      "elapsed_sec": 36.88
+    }
+  }
+}

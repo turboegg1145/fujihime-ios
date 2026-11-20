@@ -1,0 +1,323 @@
+{
+  "schema_version": "1.0",
+  "project": "fujihime-ios14.4-port",
+  "phase": "1A",
+  "ground_truth_binary": {
+    "path": "game/腐姫ＤＬ/KhimeDL.exe",
+    "sha256": "2dfc7b78d32867716ab0406ccbf176b55a76faea1cb9c40feac25c90775222fe",
+    "pixel_format": "Top-Down 32-bit BGRA ([B, G, R, A], u32 LE 0xAARRGGBB)",
+    "alpha_convention": "inverted (0x00 = opaque, 0xFF = transparent)"
+  },
+  "unknowns_status": {
+    "UNK-01": {
+      "status": "RESOLVED",
+      "summary": "XFL/WCG/LWG/MSK/BMP formats reverse-engineered to instruction precision and verified against 100% of original and CHS patch assets (0 failures). LWG layer u8 flag (0x42d0b0, observed values 0x08/0x09/0x28/0x29) has 0 call sites in KhimeDL.exe .text; CHS WCG override files contain 93 single-byte 0x00 trailing pad bytes ignored by 0x433070/0x433380 loop termination."
+    },
+    "UNK-03": {
+      "status": "RESOLVED",
+      "summary": "All software compositor modes (0x436430), Porter-Duff Over (0x43abc0/0x401890), in-place filters (0x434c30..0x435700), clipping (0x435b40), and lookup tables (m_ppAddTable/m_ppDelTable/GetEmbosTable/DITHER_TABLE_12/13) verified via Ghidra cache + x86 disassembly."
+    },
+    "UNK-04": {
+      "status": "RESOLVED",
+      "summary": "All transitions in 0x422060 mapped: 0 (instant), 1 (crossfade), 2 (4x4 dither), 3 (fade through white), 4 (fade through black), 5..99 (ef%02d.msk rule wipe, 12 assets 14..19 & 21..26), 100..199 (focal zoom-in 50% blend), 200..299 (focal shrink-to-black)."
+    },
+    "UNK-10": {
+      "status": "RESOLVED",
+      "summary": "CMpegWindow MCI control flow (0x4505f0..0x450a60) and parent sync (0x41a2a0 / 0x426ce0 / 0x424dc0 / 0x426f10) mapped; pl_mpeg full decode of 0001.mpg (3217 frames) and 0002.mpg (131 frames) passed with 0 errors and 0 NaNs."
+    }
+  },
+  "key_addresses": {
+    "luts_and_math": {
+      "CMath_init": "0x43d6c1",
+      "CMath_GetWhiteTable": "0x4015f0",
+      "CMath_GetEmbosTable": "0x401630",
+      "CMath_ScaleRGB": "0x4016b0",
+      "CMath_ScaleAddRGB": "0x401700",
+      "CMath_ScaleAddRGB_swapped": "0x401780",
+      "CMath_LerpRGB": "0x401800",
+      "CMath_PorterDuffOver": "0x401890",
+      "m_ppAddTable": "0x483820",
+      "m_ppDelTable": "0x493820",
+      "dither_table_mode_0x12": "0x46e100",
+      "dither_table_mode_0x13": "0x46e120"
+    },
+    "formats": {
+      "xfl_open": "0x431e60",
+      "wcg_load_entry": "0x42f3b0",
+      "wcg_parse_header": "0x42f450",
+      "wcg_decode_dispatch": "0x42f520",
+      "wcg_decode_8bit_plane": "0x42f5c0",
+      "wcg_decode_16bit_stream": "0x42f700",
+      "wcg_bitstream_dispatch": "0x432ec0",
+      "wcg_decode_small_dict": "0x433070",
+      "wcg_decode_large_dict": "0x433380",
+      "wcg_dict_idx_small": "0x433510",
+      "wcg_dict_idx_large": "0x4337f0",
+      "wcg_bit_reader": "0x433b40",
+      "tga_decode_entry": "0x42f990",
+      "lwg_open_path": "0x42b640",
+      "lwg_parse": "0x42b6e0",
+      "lwg_layer_ctor": "0x42bd00",
+      "lwg_layer_get_x": "0x42d090",
+      "lwg_layer_get_y": "0x42d0a0",
+      "lwg_layer_get_flag": "0x42d0b0",
+      "lwg_layer_surface_ctor": "0x42e420",
+      "msk_open": "0x430700",
+      "msk_parse": "0x4307a0",
+      "msk_1bpp": "0x4309c0",
+      "msk_8bpp": "0x430a90",
+      "msk_24bpp": "0x430b50",
+      "msk_32bpp": "0x430c10",
+      "bmp_open": "0x430cd0",
+      "bmp_parse": "0x430d80",
+      "bmp_32bpp": "0x431300",
+      "bmp_companion_alpha": "0x431370",
+      "bmp_green_colorkey": "0x431400"
+    },
+    "compositor": {
+      "set_blend_mode": "0x435770",
+      "set_global_alpha": "0x435840",
+      "set_alpha_channel_mode": "0x435910",
+      "set_threshold": "0x4359e0",
+      "clip_rects": "0x435b40",
+      "blit_dispatch": "0x436430",
+      "blit_porter_duff_over": "0x4371a0",
+      "blit_porter_duff_over_impl": "0x43abc0",
+      "mode0_srccopy": "0x437250",
+      "mode0_alpha_blend": "0x437330",
+      "mode0_alpha_cutoff": "0x437500",
+      "mode0_rule_soft": "0x4375f0",
+      "mode0_rule_black": "0x4377f0",
+      "mode0_rule_white": "0x4379d0",
+      "mode0_rule_add": "0x437bb0",
+      "mode2_global_noalpha": "0x437d90",
+      "mode2_global_alpha": "0x437f40",
+      "mode2_global_cutoff": "0x438110",
+      "mode8_half_noalpha": "0x4382e0",
+      "mode8_half_alpha": "0x4383e0",
+      "modeE_satadd_src_noalpha": "0x4385c0",
+      "modeE_satadd_src_alpha": "0x438750",
+      "modeF_satadd_dst_noalpha": "0x438910",
+      "modeF_satadd_dst_alpha": "0x438aa0",
+      "mode5_hatch_noalpha": "0x438c60",
+      "mode5_hatch_alpha": "0x438d70",
+      "mode14_blind_noalpha": "0x438f50",
+      "mode14_blind_alpha": "0x439040",
+      "mode15_vblind_noalpha": "0x439230",
+      "mode15_vblind_alpha": "0x439340",
+      "mode12_dither_noalpha": "0x439520",
+      "mode12_dither_alpha": "0x439670",
+      "mode13_dither_noalpha": "0x439890",
+      "mode13_dither_alpha": "0x4399e0",
+      "mode4_whiten_noalpha": "0x439c00",
+      "mode4_whiten_alpha": "0x439d60",
+      "mode3_darken_noalpha": "0x439f70",
+      "mode3_darken_alpha": "0x43a0d0",
+      "modeC_stripe_white": "0x43a2e0",
+      "modeB_stripe_black": "0x43a400",
+      "modeD_invert_noalpha": "0x43a520",
+      "modeD_invert_alpha": "0x43a620",
+      "mode16_color_fade_noalpha": "0x43a7e0",
+      "mode16_color_fade_alpha": "0x43a960",
+      "mode6_circle_wipe": "0x43adf0",
+      "mode7_ellipse_wipe": "0x43af50",
+      "mode67_invert_if_srcR0": "0x43b0f0",
+      "mode68_embos_lut": "0x43b1f0",
+      "mode69_white_lut": "0x43b380",
+      "mode6A_darken_lut": "0x43b4f0",
+      "mode6B_glow_satadd": "0x43b660",
+      "mode6C_darken_if_srcR": "0x43b810",
+      "mode6D_white_if_srcR": "0x43b980",
+      "filter_grayscale": "0x434c30",
+      "filter_darken_pct": "0x434da0",
+      "filter_embos_tint": "0x434fc0",
+      "filter_invert_rgb": "0x4351b0",
+      "filter_fill_rgb_keep_alpha": "0x435300",
+      "filter_fill_argb": "0x435700"
+    },
+    "transitions": {
+      "transition_dispatch": "0x422060",
+      "focal_grid_decode": "0x421740",
+      "instant_blit": "0x4461b0",
+      "zoom_crop_stretch": "0x446440",
+      "zoom_shrink_stretch": "0x446590",
+      "rule_msk_wipe": "0x448170",
+      "dither_transition": "0x4482c0",
+      "crossfade_transition": "0x4483f0",
+      "zoom_halfblend_100_199": "0x448540",
+      "zoom_black_200_299": "0x4486c0",
+      "fade_out_black": "0x4487c0",
+      "fade_in_black": "0x4488e0",
+      "fade_through_black": "0x448a00",
+      "fade_out_white": "0x448a30",
+      "fade_in_white": "0x448b50",
+      "fade_through_white": "0x448c70"
+    },
+    "mpeg_mci": {
+      "main_wndproc_sync": "0x41a2a0",
+      "script_opcode_movie": "0x424dc0",
+      "title_movie_sequence": "0x426ce0",
+      "wait_movie_event": "0x426f10",
+      "engine_play_movie": "0x449060",
+      "mpeg_wnd_create": "0x4505f0",
+      "mci_close": "0x4506f0",
+      "mci_open_and_put_800x600": "0x450720",
+      "mci_play_notify": "0x450820",
+      "mci_stop_close_notify_parent": "0x4508a0",
+      "mpeg_wndproc": "0x450900",
+      "post_msg_play": "0x4509d0",
+      "post_msg_open": "0x4509f0"
+    }
+  },
+  "constants": {
+    "dither_table_0x46e100": [
+      65503, 61407, 28639, 28631, 27607, 27606, 27478, 27222,
+      10838, 10834, 2642, 2578, 2066, 2064, 2048, 0
+    ],
+    "dither_table_0x46e120": [
+      65534, 65532, 65528, 65520, 65392, 63344, 30576, 14192,
+      5992, 1904, 1648, 1632, 1600, 1536, 512, 0
+    ]
+  },
+  "asset_verification": {
+    "script": "re/verify_wcg_lwg.py",
+    "environment": "docker:fujihime-re",
+    "exit_code": 0,
+    "elapsed_sec": 160.811,
+    "totals": {
+      "orig_wcg": 1727,
+      "orig_lwg": 15,
+      "orig_lwg_layers": 154,
+      "orig_msk": 12,
+      "orig_trailing_pad_bytes": 0,
+      "chs_wcg": 312,
+      "chs_bmp": 36,
+      "chs_bmp_bpp": {
+        "32": 36
+      },
+      "chs_lwg": 2,
+      "chs_lwg_layers": 76,
+      "chs_trailing_pad_bytes": 93,
+      "failures": 0
+    },
+    "archives": {
+      "grpe.xfl": {"wcg": 329, "lwg": 0, "lwg_layers": 0, "msk": 0, "other": 0, "trailing_pad_bytes": 0},
+      "grpo.xfl": {"wcg": 669, "lwg": 0, "lwg_layers": 0, "msk": 0, "other": 0, "trailing_pad_bytes": 0},
+      "grpp.xfl": {"wcg": 198, "lwg": 0, "lwg_layers": 0, "msk": 0, "other": 0, "trailing_pad_bytes": 0},
+      "grps.xfl": {"wcg": 55, "lwg": 15, "lwg_layers": 154, "msk": 12, "other": 0, "trailing_pad_bytes": 0},
+      "grpf.xfl": {"wcg": 40, "lwg": 0, "lwg_layers": 0, "msk": 0, "other": 0, "trailing_pad_bytes": 0},
+      "grpo_ex.xfl": {"wcg": 320, "lwg": 0, "lwg_layers": 0, "msk": 0, "other": 0, "trailing_pad_bytes": 0},
+      "补丁/原版备份/grpo_tp.xfl": {"wcg": 116, "lwg": 0, "lwg_layers": 0, "msk": 0, "other": 0, "trailing_pad_bytes": 0},
+      "chs:grpo_tp.xfl": {"wcg": 80, "bmp": 36, "other": 0, "trailing_pad_bytes": 0}
+    },
+    "directories": {
+      "grpe": {"wcg": 10, "lwg": 0, "lwg_layers": 0, "other": 0, "trailing_pad_bytes": 3},
+      "grpo_ex": {"wcg": 210, "lwg": 0, "lwg_layers": 0, "other": 0, "trailing_pad_bytes": 68},
+      "grps": {"wcg": 12, "lwg": 2, "lwg_layers": 76, "other": 0, "trailing_pad_bytes": 22}
+    },
+    "samples": {
+      "grpe.xfl/0001.wcg": {
+        "width": 800,
+        "height": 600,
+        "bytes": 1920000,
+        "sha256_prefix": "ee7ea087f5ddbb42",
+        "alpha_min": 0,
+        "alpha_max": 0,
+        "pixel0": [13, 28, 25, 0]
+      },
+      "grps.xfl/compane.lwg": {
+        "canvas_w": 39,
+        "canvas_h": 106,
+        "layers": 18,
+        "first_layer": "slide_lev",
+        "first_layer_w": 14,
+        "first_layer_h": 60,
+        "sha256_prefix": "0a04fad48f3f2ac1"
+      },
+      "grps.xfl/ef14.msk": {
+        "width": 800,
+        "height": 600,
+        "bytes": 480000,
+        "sha256_prefix": "c6f9da9de2f4b4db",
+        "val_min": 26,
+        "val_max": 255
+      },
+      "补丁/原版备份/grpo_tp.xfl/8000.wcg": {
+        "width": 496,
+        "height": 218,
+        "bytes": 432512,
+        "sha256_prefix": "b07de25bb8760648",
+        "alpha_min": 0,
+        "alpha_max": 255,
+        "pixel0": [0, 0, 0, 255]
+      },
+      "grpo_tp.xfl/8000.bmp": {
+        "width": 496,
+        "height": 218,
+        "bpp": 32,
+        "bytes": 432512,
+        "sha256_prefix": "d929d10c24ae7b66",
+        "alpha_min": 0,
+        "alpha_max": 255,
+        "pixel0": [0, 0, 0, 255]
+      }
+    }
+  },
+  "pl_mpeg_verification": {
+    "tool": "re/ghidra/cache/pl_mpeg_test/verify_mpg",
+    "environment": "docker:fujihime-re",
+    "exit_code": 0,
+    "total_frames_decoded": 3348,
+    "total_errors": 0,
+    "total_nans": 0,
+    "files": {
+      "mov/0001.mpg": {
+        "video_streams": 1,
+        "audio_streams": 1,
+        "width": 320,
+        "height": 240,
+        "fps": 30.0,
+        "duration_header_sec": 106.433,
+        "decoded_video_frames": 3217,
+        "last_vpts_sec": 107.2,
+        "bgra_hash": "0xebfd8dbd74931414",
+        "audio_samplerate": 44100,
+        "audio_channels": 2,
+        "decoded_audio_packets": 4106,
+        "samples_per_channel": 4730112,
+        "stereo_floats": 9460224,
+        "audio_duration_sec": 107.2588,
+        "last_apts_sec": 107.2327,
+        "nan_count": 0,
+        "max_abs": 0.8935,
+        "elapsed_sec": 6.2246
+      },
+      "mov/0002.mpg": {
+        "video_streams": 1,
+        "audio_streams": 1,
+        "width": 640,
+        "height": 480,
+        "fps": 30.0,
+        "duration_header_sec": 4.3,
+        "decoded_video_frames": 131,
+        "last_vpts_sec": 4.3333,
+        "bgra_hash": "0x3f068695cd5353bc",
+        "audio_samplerate": 44100,
+        "audio_channels": 2,
+        "decoded_audio_packets": 168,
+        "samples_per_channel": 193536,
+        "stereo_floats": 387072,
+        "audio_duration_sec": 4.3886,
+        "last_apts_sec": 4.3624,
+        "nan_count": 0,
+        "max_abs": 0.0,
+        "elapsed_sec": 0.2039,
+        "note": "Audio stream is valid 44100Hz stereo MP2 with all-zero silent samples"
+      }
+    },
+    "risks": [
+      "plm_get_duration() header estimate (106.433s / 4.300s) slightly underestimates actual decoded length (107.200s / 4.333s); player must drive completion via plm_has_ended() / decode EOF rather than header duration.",
+      "Original MCI playback scales video destination to full 800x600 client rect (0x450720); port must stretch 320x240 and 640x480 frames to 800x600."
+    ]
+  }
+}

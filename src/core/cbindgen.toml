@@ -1,0 +1,57 @@
+language = "C"
+pragma_once = false
+include_guard = "FUJIHIME_CORE_H"
+cpp_compat = true
+tab_width = 4
+style = "both"
+
+[export]
+include = [
+    "FujihimeEngine",
+    "FujihimeEngineConfig",
+    "FujihimeEngineState",
+    "FujihimePendingDialog",
+    "FujihimeLanguageMode",
+    "FujihimeFontRole",
+    "FujihimePointerKind",
+    "FujihimeSceneKind",
+    "FujihimeDialogKind",
+    "FujihimeSystemAction",
+]
+exclude = [
+    "AssetCategory",
+    "FtLibraryOpaque",
+    "FtFaceOpaque",
+    "FujihimeFtGlyphOut",
+    "PlmOpaque",
+    "DITHER_TABLE_12",
+    "DITHER_TABLE_13",
+    "KINSOKU_START_ASCII",
+    "KINSOKU_START_SJIS",
+    "KINSOKU_END_SJIS",
+    "fujihime_ft_init",
+    "fujihime_ft_done",
+    "fujihime_ft_new_memory_face",
+    "fujihime_ft_done_face",
+    "fujihime_ft_render_char",
+    "fujihime_plm_create_with_memory",
+    "fujihime_plm_destroy",
+    "fujihime_plm_has_headers",
+    "fujihime_plm_get_width",
+    "fujihime_plm_get_height",
+    "fujihime_plm_get_framerate",
+    "fujihime_plm_get_samplerate",
+    "fujihime_plm_get_num_video_streams",
+    "fujihime_plm_get_num_audio_streams",
+    "fujihime_plm_has_ended",
+    "fujihime_plm_set_video_enabled",
+    "fujihime_plm_set_audio_enabled",
+    "fujihime_plm_set_loop",
+    "fujihime_plm_rewind",
+    "fujihime_plm_decode_video_bgra",
+    "fujihime_plm_decode_audio",
+]
+
+[enum]
+rename_variants = "ScreamingSnakeCase"
+prefix_with_name = true

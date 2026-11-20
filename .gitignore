@@ -10,6 +10,7 @@ re/.cache/
 *.tmp
 
 # Build artifacts and dependencies
+target/
 build/
 dist/
 out/
@@ -18,6 +19,14 @@ node_modules/
 __pycache__/
 *.pyc
 .cache/
+
+# iOS generated project, binaries, and asset archives
+*.tar
+*.ipa
+src/ios/Vendor/*.a
+src/ios/Fujihime.xcodeproj/
+src/ios/build/
+src/ios/Payload/
 
 # Local environment overrides
 .env

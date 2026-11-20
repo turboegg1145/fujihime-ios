@@ -1,0 +1,2265 @@
+{
+  "schema_version": "1.0",
+  "project": "fujihime-ios14.4-port",
+  "phase": "1B",
+  "ground_truth_binary": {
+    "path": "game/腐姫ＤＬ/KhimeDL.exe",
+    "sha256": "2dfc7b78d32867716ab0406ccbf176b55a76faea1cb9c40feac25c90775222fe"
+  },
+  "unknowns_status": {
+    "UNK-02": {
+      "status": "RESOLVED",
+      "summary": "GSC 36-byte header (9x u32), 7-section layout (code, str_offsets, str_data, array_offsets, array_data, label_offsets, label_names), operand indirection (0x421350 / 0x41f420 / 0x41f450 / 0x41f4b0 / 0x41f500), 0x1000..0xF000 expression family, and all 120 command opcodes (0x03..0xD5) fully reverse-engineered with Ghidra pseudocode and x86 assembly."
+    },
+    "UNK-06": {
+      "status": "RESOLVED",
+      "summary": "All 341 ORIG (CP932) and 341 CHS (GBK) .gsc scripts verified with 0 failures, 0 unknown opcodes, 0 truncations, 0 bad jump targets, 0 out-of-range string/array refs. Bytecode is 100% identical across ORIG and CHS (0 diffs). RICHED32 / WM_USER+0x32 (0x432 -> 0x41b010 -> 0x403210) is exclusively triggered by opcode 0x9c, which has 0 occurrences across all 341 scripts, confirming safe exclusion from iOS 14.4 port."
+    }
+  },
+  "key_addresses": {
+    "gsc_loader": "0x417c70",
+    "gsc_loader_wrapper": "0x417c40",
+    "gsc_tsc_fallback": "0x417fe0",
+    "gsc_label_lookup": "0x4179d0",
+    "gsc_read_u16": "0x417a30",
+    "gsc_read_i16": "0x417a50",
+    "gsc_read_u32": "0x417a70",
+    "gsc_get_string": "0x417a90",
+    "gsc_get_array": "0x417ab0",
+    "gsc_seek": "0x417af0",
+    "gsc_tell": "0x417b10",
+    "vm_dispatch_loop": "0x41f9f0",
+    "vm_eval_operand_u32": "0x421350",
+    "vm_deref_var": "0x41f420",
+    "vm_read_lhs": "0x41f450",
+    "vm_read_rhs": "0x41f4b0",
+    "vm_write_lhs": "0x41f500",
+    "vm_expand_string": "0x421310",
+    "vm_expand_int_vars": "0x421200",
+    "vm_expand_str_vars": "0x421130",
+    "vm_goto_script": "0x4214c0",
+    "vm_call_script": "0x421540",
+    "vm_gosub_local": "0x421620",
+    "vm_ret": "0x4216b0",
+    "vm_transition_dispatch": "0x422060",
+    "vm_text_display_core": "0x415380",
+    "vm_mpg_play": "0x424dc0"
+  },
+  "richedit_evidence": {
+    "richedit_init_va": "0x403210",
+    "richedit_dll_str_va": "0x46d154",
+    "richedit_dll_xrefs": [
+      "0x403236"
+    ],
+    "richedit_class_str_va": "0x46d120",
+    "richedit_class_xrefs": [
+      "0x40363c"
+    ],
+    "callers_of_0x403210": [
+      "0x41b010 (call @ 0x41b025)"
+    ],
+    "wndproc_0x432_handler": "0x41a2a0 (param_2 == 0x432 calls FUN_0041b010)",
+    "search_bytes_0x432_in_text": [
+      "0x423f93 inside FUN_00423f80 (opcode 0x9c)"
+    ],
+    "opcode_0x9c_count_orig": 0,
+    "opcode_0x9d_count_orig": 0,
+    "opcode_0x9c_count_chs": 0,
+    "opcode_0x9d_count_chs": 0,
+    "safe_to_exclude_ios": true
+  },
+  "hi_family_spec": {
+    "0x1000": {
+      "op": "assign",
+      "handler_va": "0x41f590",
+      "helper_va": "0x41f500",
+      "bytes": 8,
+      "operands": [
+        "u16 reg_dst",
+        "i16 lhs_dst",
+        "i16 rhs"
+      ]
+    },
+    "0x2000": {
+      "op": "logical_or",
+      "handler_va": "0x41f5c0",
+      "bytes": 8,
+      "operands": [
+        "u16 reg_dst",
+        "i16 lhs",
+        "i16 rhs"
+      ]
+    },
+    "0x3000": {
+      "op": "logical_and",
+      "handler_va": "0x41f620",
+      "bytes": 8,
+      "operands": [
+        "u16 reg_dst",
+        "i16 lhs",
+        "i16 rhs"
+      ]
+    },
+    "0x4000": {
+      "op": "eq",
+      "handler_va": "0x41f680",
+      "bytes": 8,
+      "operands": [
+        "u16 reg_dst",
+        "i16 lhs",
+        "i16 rhs"
+      ]
+    },
+    "0x5000": {
+      "op": "ge",
+      "handler_va": "0x41f6c0",
+      "bytes": 8,
+      "operands": [
+        "u16 reg_dst",
+        "i16 lhs",
+        "i16 rhs"
+      ]
+    },
+    "0x6000": {
+      "op": "gt",
+      "handler_va": "0x41f700",
+      "bytes": 8,
+      "operands": [
+        "u16 reg_dst",
+        "i16 lhs",
+        "i16 rhs"
+      ]
+    },
+    "0x7000": {
+      "op": "le",
+      "handler_va": "0x41f740",
+      "bytes": 8,
+      "operands": [
+        "u16 reg_dst",
+        "i16 lhs",
+        "i16 rhs"
+      ]
+    },
+    "0x8000": {
+      "op": "lt",
+      "handler_va": "0x41f780",
+      "bytes": 8,
+      "operands": [
+        "u16 reg_dst",
+        "i16 lhs",
+        "i16 rhs"
+      ]
+    },
+    "0x9000": {
+      "op": "ne",
+      "handler_va": "0x41f7c0",
+      "bytes": 8,
+      "operands": [
+        "u16 reg_dst",
+        "i16 lhs",
+        "i16 rhs"
+      ]
+    },
+    "0xA000": {
+      "op": "add",
+      "handler_va": "0x41f800",
+      "bytes": 8,
+      "operands": [
+        "u16 reg_dst",
+        "i16 lhs",
+        "i16 rhs"
+      ]
+    },
+    "0xB000": {
+      "op": "sub",
+      "handler_va": "0x41f840",
+      "bytes": 8,
+      "operands": [
+        "u16 reg_dst",
+        "i16 lhs",
+        "i16 rhs"
+      ]
+    },
+    "0xC000": {
+      "op": "mul",
+      "handler_va": "0x41f880",
+      "bytes": 8,
+      "operands": [
+        "u16 reg_dst",
+        "i16 lhs",
+        "i16 rhs"
+      ]
+    },
+    "0xD000": {
+      "op": "div",
+      "handler_va": "0x41f8c0",
+      "bytes": 8,
+      "operands": [
+        "u16 reg_dst",
+        "i16 lhs",
+        "i16 rhs"
+      ]
+    },
+    "0xE000": {
+      "op": "mod",
+      "handler_va": "0x41f900",
+      "bytes": 8,
+      "operands": [
+        "u16 reg_dst",
+        "i16 lhs",
+        "i16 rhs"
+      ]
+    },
+    "0xF000": {
+      "op": "load_reg",
+      "handler_va": "0x41f560",
+      "bytes": 6,
+      "operands": [
+        "u16 reg_dst",
+        "i16 rhs"
+      ]
+    }
+  },
+  "opcode_table": [
+    {
+      "opcode": "0x03",
+      "name": "jz",
+      "handler_va": "0x41f980",
+      "operands": [
+        "u32"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 760,
+      "chs_count": 760
+    },
+    {
+      "opcode": "0x04",
+      "name": "jnz",
+      "handler_va": "0x41f960",
+      "operands": [
+        "u32"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 57,
+      "chs_count": 57
+    },
+    {
+      "opcode": "0x05",
+      "name": "jmp",
+      "handler_va": "0x41f9a0",
+      "operands": [
+        "u32"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 671,
+      "chs_count": 671
+    },
+    {
+      "opcode": "0x08",
+      "name": "exit",
+      "handler_va": "0x41f9f0",
+      "operands": [],
+      "operand_bytes": 0,
+      "total_bytes": 2,
+      "orig_count": 95,
+      "chs_count": 95
+    },
+    {
+      "opcode": "0x09",
+      "name": "rand_reg",
+      "handler_va": "0x41f940",
+      "operands": [
+        "u16"
+      ],
+      "operand_bytes": 2,
+      "total_bytes": 4,
+      "orig_count": 1,
+      "chs_count": 1
+    },
+    {
+      "opcode": "0x0a",
+      "name": "wait_click",
+      "handler_va": "0x424140",
+      "operands": [],
+      "operand_bytes": 0,
+      "total_bytes": 2,
+      "orig_count": 158,
+      "chs_count": 158
+    },
+    {
+      "opcode": "0x0b",
+      "name": "wait_click_clear",
+      "handler_va": "0x424230",
+      "operands": [],
+      "operand_bytes": 0,
+      "total_bytes": 2,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x0c",
+      "name": "goto_script",
+      "handler_va": "0x4214c0",
+      "operands": [
+        "expr",
+        "u32"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 397,
+      "chs_count": 397
+    },
+    {
+      "opcode": "0x0d",
+      "name": "sleep_100ms",
+      "handler_va": "0x4240e0",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 751,
+      "chs_count": 751
+    },
+    {
+      "opcode": "0x0e",
+      "name": "select_6",
+      "handler_va": "0x424340",
+      "operands": [
+        "u16",
+        "u32",
+        "u32",
+        "u32",
+        "u32",
+        "u32",
+        "u32",
+        "u32",
+        "u32",
+        "u32",
+        "u32",
+        "u32",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 58,
+      "total_bytes": 60,
+      "orig_count": 43,
+      "chs_count": 43
+    },
+    {
+      "opcode": "0x0f",
+      "name": "call_script",
+      "handler_va": "0x421540",
+      "operands": [
+        "expr",
+        "u32",
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 48,
+      "total_bytes": 50,
+      "orig_count": 151,
+      "chs_count": 151
+    },
+    {
+      "opcode": "0x10",
+      "name": "ret",
+      "handler_va": "0x4216b0",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 175,
+      "chs_count": 175
+    },
+    {
+      "opcode": "0x11",
+      "name": "menu_pause",
+      "handler_va": "0x424e10",
+      "operands": [],
+      "operand_bytes": 0,
+      "total_bytes": 2,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x12",
+      "name": "load_array",
+      "handler_va": "0x424900",
+      "operands": [
+        "expr",
+        "u32"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 20,
+      "chs_count": 20
+    },
+    {
+      "opcode": "0x13",
+      "name": "sub_vm_call",
+      "handler_va": "0x424ef0",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x14",
+      "name": "bg_load",
+      "handler_va": "0x422c80",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 1778,
+      "chs_count": 1778
+    },
+    {
+      "opcode": "0x15",
+      "name": "bg_clear",
+      "handler_va": "0x422d00",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x16",
+      "name": "spr_load_layer0",
+      "handler_va": "0x422d40",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 16,
+      "total_bytes": 18,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x17",
+      "name": "shake",
+      "handler_va": "0x424aa0",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 16,
+      "total_bytes": 18,
+      "orig_count": 11,
+      "chs_count": 11
+    },
+    {
+      "opcode": "0x18",
+      "name": "flash",
+      "handler_va": "0x424b10",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x19",
+      "name": "call_subscene_dll",
+      "handler_va": "0x424790",
+      "operands": [
+        "u32",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x1a",
+      "name": "batch_begin",
+      "handler_va": "0x423880",
+      "operands": [],
+      "operand_bytes": 0,
+      "total_bytes": 2,
+      "orig_count": 3961,
+      "chs_count": 3961
+    },
+    {
+      "opcode": "0x1b",
+      "name": "batch_end",
+      "handler_va": "0x423890",
+      "operands": [],
+      "operand_bytes": 0,
+      "total_bytes": 2,
+      "orig_count": 381,
+      "chs_count": 381
+    },
+    {
+      "opcode": "0x1c",
+      "name": "transition",
+      "handler_va": "0x4238b0",
+      "operands": [
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 12,
+      "total_bytes": 14,
+      "orig_count": 3569,
+      "chs_count": 3569
+    },
+    {
+      "opcode": "0x1d",
+      "name": "zoom_transition",
+      "handler_va": "0x4238e0",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x1e",
+      "name": "spr_load",
+      "handler_va": "0x422d70",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 24,
+      "total_bytes": 26,
+      "orig_count": 1970,
+      "chs_count": 1970
+    },
+    {
+      "opcode": "0x20",
+      "name": "spr_load_str",
+      "handler_va": "0x422e20",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "u32"
+      ],
+      "operand_bytes": 24,
+      "total_bytes": 26,
+      "orig_count": 243,
+      "chs_count": 243
+    },
+    {
+      "opcode": "0x21",
+      "name": "spr_load_grp",
+      "handler_va": "0x422e70",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 20,
+      "total_bytes": 22,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x22",
+      "name": "spr_load_rel",
+      "handler_va": "0x422f30",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 20,
+      "total_bytes": 22,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x23",
+      "name": "spr_show_mode",
+      "handler_va": "0x422ff0",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x24",
+      "name": "spr_alpha_or_clear",
+      "handler_va": "0x423080",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 4769,
+      "chs_count": 4769
+    },
+    {
+      "opcode": "0x25",
+      "name": "spr_visible",
+      "handler_va": "0x423110",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 30,
+      "chs_count": 30
+    },
+    {
+      "opcode": "0x26",
+      "name": "spr_pos",
+      "handler_va": "0x423230",
+      "operands": [
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 12,
+      "total_bytes": 14,
+      "orig_count": 10,
+      "chs_count": 10
+    },
+    {
+      "opcode": "0x27",
+      "name": "spr_blend",
+      "handler_va": "0x423190",
+      "operands": [
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 12,
+      "total_bytes": 14,
+      "orig_count": 1,
+      "chs_count": 1
+    },
+    {
+      "opcode": "0x28",
+      "name": "spr_z",
+      "handler_va": "0x4232d0",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x29",
+      "name": "spr_group",
+      "handler_va": "0x423350",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x2a",
+      "name": "tbox_show",
+      "handler_va": "0x422c50",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 926,
+      "chs_count": 926
+    },
+    {
+      "opcode": "0x2b",
+      "name": "eyes_overlay",
+      "handler_va": "0x4235a0",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 412,
+      "chs_count": 412
+    },
+    {
+      "opcode": "0x2c",
+      "name": "eyes_z",
+      "handler_va": "0x423710",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x2d",
+      "name": "filter_overlay",
+      "handler_va": "0x423760",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 901,
+      "chs_count": 901
+    },
+    {
+      "opcode": "0x2e",
+      "name": "filter_z",
+      "handler_va": "0x423830",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 81,
+      "chs_count": 81
+    },
+    {
+      "opcode": "0x2f",
+      "name": "coord_scale",
+      "handler_va": "0x4226f0",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 10,
+      "chs_count": 10
+    },
+    {
+      "opcode": "0x30",
+      "name": "portrait_face",
+      "handler_va": "0x422df0",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 904,
+      "chs_count": 904
+    },
+    {
+      "opcode": "0x31",
+      "name": "spr_type",
+      "handler_va": "0x423370",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 4,
+      "chs_count": 4
+    },
+    {
+      "opcode": "0x32",
+      "name": "rollback_save",
+      "handler_va": "0x41e160",
+      "operands": [],
+      "operand_bytes": 0,
+      "total_bytes": 2,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x33",
+      "name": "rollback_restore",
+      "handler_va": "0x424060",
+      "operands": [],
+      "operand_bytes": 0,
+      "total_bytes": 2,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x34",
+      "name": "skip_stop",
+      "handler_va": "0x424110",
+      "operands": [],
+      "operand_bytes": 0,
+      "total_bytes": 2,
+      "orig_count": 15,
+      "chs_count": 15
+    },
+    {
+      "opcode": "0x35",
+      "name": "rollback_flag",
+      "handler_va": "0x424020",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x37",
+      "name": "save_snapshot",
+      "handler_va": "0x41de30",
+      "operands": [],
+      "operand_bytes": 0,
+      "total_bytes": 2,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x38",
+      "name": "tbox_style",
+      "handler_va": "0x423fd0",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 20,
+      "total_bytes": 22,
+      "orig_count": 5,
+      "chs_count": 5
+    },
+    {
+      "opcode": "0x39",
+      "name": "tbox_reset",
+      "handler_va": "0x424040",
+      "operands": [],
+      "operand_bytes": 0,
+      "total_bytes": 2,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x3a",
+      "name": "abort_if_flag",
+      "handler_va": "0x41f9f0",
+      "operands": [],
+      "operand_bytes": 0,
+      "total_bytes": 2,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x3b",
+      "name": "spr_load_centered",
+      "handler_va": "0x422dc0",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 16,
+      "total_bytes": 18,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x3c",
+      "name": "bgm_play",
+      "handler_va": "0x424d30",
+      "operands": [
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 12,
+      "total_bytes": 14,
+      "orig_count": 381,
+      "chs_count": 381
+    },
+    {
+      "opcode": "0x3d",
+      "name": "bgm_stop",
+      "handler_va": "0x424d80",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 232,
+      "chs_count": 232
+    },
+    {
+      "opcode": "0x3e",
+      "name": "se_play_once",
+      "handler_va": "0x424b90",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 214,
+      "chs_count": 214
+    },
+    {
+      "opcode": "0x3f",
+      "name": "se_play",
+      "handler_va": "0x424c00",
+      "operands": [
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 12,
+      "total_bytes": 14,
+      "orig_count": 214,
+      "chs_count": 214
+    },
+    {
+      "opcode": "0x40",
+      "name": "se_stop",
+      "handler_va": "0x424c90",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 45,
+      "chs_count": 45
+    },
+    {
+      "opcode": "0x41",
+      "name": "mpg_play",
+      "handler_va": "0x424dc0",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 4,
+      "chs_count": 4
+    },
+    {
+      "opcode": "0x42",
+      "name": "voice_play",
+      "handler_va": "0x424cc0",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 16,
+      "total_bytes": 18,
+      "orig_count": 260,
+      "chs_count": 260
+    },
+    {
+      "opcode": "0x43",
+      "name": "voice_stop",
+      "handler_va": "0x424d10",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 30,
+      "chs_count": 30
+    },
+    {
+      "opcode": "0x44",
+      "name": "se_wait",
+      "handler_va": "0x424e70",
+      "operands": [],
+      "operand_bytes": 0,
+      "total_bytes": 2,
+      "orig_count": 1,
+      "chs_count": 1
+    },
+    {
+      "opcode": "0x45",
+      "name": "voice_wait",
+      "handler_va": "0x424eb0",
+      "operands": [],
+      "operand_bytes": 0,
+      "total_bytes": 2,
+      "orig_count": 2,
+      "chs_count": 2
+    },
+    {
+      "opcode": "0x46",
+      "name": "spr_anim_x",
+      "handler_va": "0x423910",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 16,
+      "total_bytes": 18,
+      "orig_count": 94,
+      "chs_count": 94
+    },
+    {
+      "opcode": "0x47",
+      "name": "spr_anim_y",
+      "handler_va": "0x423940",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 16,
+      "total_bytes": 18,
+      "orig_count": 4,
+      "chs_count": 4
+    },
+    {
+      "opcode": "0x48",
+      "name": "spr_anim_stop",
+      "handler_va": "0x4239a0",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 39,
+      "chs_count": 39
+    },
+    {
+      "opcode": "0x49",
+      "name": "timer_wait_loop",
+      "handler_va": "0x4239f0",
+      "operands": [
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 12,
+      "total_bytes": 14,
+      "orig_count": 25,
+      "chs_count": 25
+    },
+    {
+      "opcode": "0x4a",
+      "name": "auto_clear_anim",
+      "handler_va": "0x423bb0",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 10,
+      "chs_count": 10
+    },
+    {
+      "opcode": "0x4b",
+      "name": "spr_anim_frame",
+      "handler_va": "0x4239c0",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 20,
+      "total_bytes": 22,
+      "orig_count": 95,
+      "chs_count": 95
+    },
+    {
+      "opcode": "0x4d",
+      "name": "spr_anim_alpha",
+      "handler_va": "0x423970",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 16,
+      "total_bytes": 18,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x50",
+      "name": "text_clear",
+      "handler_va": "0x4228d0",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x51",
+      "name": "text_voice",
+      "handler_va": "0x422a70",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "u32",
+        "u32",
+        "expr"
+      ],
+      "operand_bytes": 28,
+      "total_bytes": 30,
+      "orig_count": 18389,
+      "chs_count": 18389
+    },
+    {
+      "opcode": "0x52",
+      "name": "text_say",
+      "handler_va": "0x422900",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "u32",
+        "expr"
+      ],
+      "operand_bytes": 24,
+      "total_bytes": 26,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x53",
+      "name": "text_clear_wait",
+      "handler_va": "0x422710",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 21,
+      "chs_count": 21
+    },
+    {
+      "opcode": "0x5a",
+      "name": "tbox_text_pos",
+      "handler_va": "0x422640",
+      "operands": [
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 12,
+      "total_bytes": 14,
+      "orig_count": 221,
+      "chs_count": 221
+    },
+    {
+      "opcode": "0x5b",
+      "name": "tbox_rect",
+      "handler_va": "0x4225f0",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 20,
+      "total_bytes": 22,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x5c",
+      "name": "tbox_font_size",
+      "handler_va": "0x422540",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 904,
+      "chs_count": 904
+    },
+    {
+      "opcode": "0x5d",
+      "name": "tbox_line_count_or_scroll",
+      "handler_va": "0x4226d0",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 189,
+      "chs_count": 189
+    },
+    {
+      "opcode": "0x5e",
+      "name": "tbox_mode",
+      "handler_va": "0x422670",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 221,
+      "chs_count": 221
+    },
+    {
+      "opcode": "0x5f",
+      "name": "tbox_color_preset",
+      "handler_va": "0x4223b0",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 221,
+      "chs_count": 221
+    },
+    {
+      "opcode": "0x60",
+      "name": "tbox_char_spacing",
+      "handler_va": "0x4224c0",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 221,
+      "chs_count": 221
+    },
+    {
+      "opcode": "0x61",
+      "name": "tbox_line_spacing",
+      "handler_va": "0x4224e0",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 221,
+      "chs_count": 221
+    },
+    {
+      "opcode": "0x62",
+      "name": "tbox_shadow",
+      "handler_va": "0x422500",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 221,
+      "chs_count": 221
+    },
+    {
+      "opcode": "0x63",
+      "name": "tbox_speed",
+      "handler_va": "0x422520",
+      "operands": [
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 12,
+      "total_bytes": 14,
+      "orig_count": 16824,
+      "chs_count": 16824
+    },
+    {
+      "opcode": "0x64",
+      "name": "tbox_face_pos",
+      "handler_va": "0x422560",
+      "operands": [
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 12,
+      "total_bytes": 14,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x65",
+      "name": "tbox_icon_pos",
+      "handler_va": "0x422690",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 32,
+      "chs_count": 32
+    },
+    {
+      "opcode": "0x66",
+      "name": "text_voice_wait_mode",
+      "handler_va": "0x424030",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x67",
+      "name": "tbox_font_type",
+      "handler_va": "0x422590",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 221,
+      "chs_count": 221
+    },
+    {
+      "opcode": "0x68",
+      "name": "tbox_bg_color",
+      "handler_va": "0x4225b0",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 16,
+      "total_bytes": 18,
+      "orig_count": 221,
+      "chs_count": 221
+    },
+    {
+      "opcode": "0x69",
+      "name": "tbox_bg_alpha",
+      "handler_va": "0x4226b0",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 32,
+      "chs_count": 32
+    },
+    {
+      "opcode": "0x6e",
+      "name": "get_spr_pos",
+      "handler_va": "0x424980",
+      "operands": [
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 12,
+      "total_bytes": 14,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x6f",
+      "name": "muldiv",
+      "handler_va": "0x4249e0",
+      "operands": [
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 12,
+      "total_bytes": 14,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x70",
+      "name": "ftol_noop",
+      "handler_va": "0x424a00",
+      "operands": [
+        "expr"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x71",
+      "name": "pow_i16",
+      "handler_va": "0x424a30",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x72",
+      "name": "global_flag",
+      "handler_va": "0x424a60",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x78",
+      "name": "spr_anchor",
+      "handler_va": "0x423470",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 195,
+      "chs_count": 195
+    },
+    {
+      "opcode": "0x79",
+      "name": "spr_dir",
+      "handler_va": "0x4234f0",
+      "operands": [
+        "expr",
+        "u32"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 51,
+      "chs_count": 51
+    },
+    {
+      "opcode": "0x82",
+      "name": "gauge_set_parts",
+      "handler_va": "0x423bc0",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 16,
+      "total_bytes": 18,
+      "orig_count": 5,
+      "chs_count": 5
+    },
+    {
+      "opcode": "0x83",
+      "name": "gauge_set_range",
+      "handler_va": "0x423c20",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 20,
+      "total_bytes": 22,
+      "orig_count": 5,
+      "chs_count": 5
+    },
+    {
+      "opcode": "0x84",
+      "name": "gauge_visible",
+      "handler_va": "0x423c70",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 53,
+      "chs_count": 53
+    },
+    {
+      "opcode": "0x86",
+      "name": "gauge_pos",
+      "handler_va": "0x423cb0",
+      "operands": [
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 12,
+      "total_bytes": 14,
+      "orig_count": 5,
+      "chs_count": 5
+    },
+    {
+      "opcode": "0x87",
+      "name": "gauge_part_pos",
+      "handler_va": "0x423cf0",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 20,
+      "total_bytes": 22,
+      "orig_count": 5,
+      "chs_count": 5
+    },
+    {
+      "opcode": "0x88",
+      "name": "gauge_value",
+      "handler_va": "0x423d40",
+      "operands": [
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 12,
+      "total_bytes": 14,
+      "orig_count": 34,
+      "chs_count": 34
+    },
+    {
+      "opcode": "0x96",
+      "name": "str_assign_lit",
+      "handler_va": "0x423da0",
+      "operands": [
+        "expr",
+        "u32"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x97",
+      "name": "str_concat_lit",
+      "handler_va": "0x423dd0",
+      "operands": [
+        "expr",
+        "u32"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x98",
+      "name": "str_from_int_fw",
+      "handler_va": "0x423e00",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x99",
+      "name": "str_to_int",
+      "handler_va": "0x423e40",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x9a",
+      "name": "str_copy",
+      "handler_va": "0x423e80",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x9b",
+      "name": "str_concat",
+      "handler_va": "0x423ec0",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x9c",
+      "name": "richedit_open",
+      "handler_va": "0x423f80",
+      "operands": [
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 12,
+      "total_bytes": 14,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x9d",
+      "name": "richedit_cfg",
+      "handler_va": "0x423fb0",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 20,
+      "total_bytes": 22,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x9e",
+      "name": "str_save_global",
+      "handler_va": "0x423f00",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0x9f",
+      "name": "str_load_global",
+      "handler_va": "0x423f40",
+      "operands": [
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0xc8",
+      "name": "gosub_local",
+      "handler_va": "0x421620",
+      "operands": [
+        "u32",
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 44,
+      "total_bytes": 46,
+      "orig_count": 26,
+      "chs_count": 26
+    },
+    {
+      "opcode": "0xc9",
+      "name": "spr_clip_rect",
+      "handler_va": "0x4233f0",
+      "operands": [
+        "expr",
+        "expr",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 20,
+      "total_bytes": 22,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0xca",
+      "name": "memset_vars",
+      "handler_va": "0x424930",
+      "operands": [
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 12,
+      "total_bytes": 14,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0xd2",
+      "name": "backlog_set_title",
+      "handler_va": "0x4247e0",
+      "operands": [
+        "u32",
+        "expr"
+      ],
+      "operand_bytes": 8,
+      "total_bytes": 10,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0xd3",
+      "name": "backlog_add_entry",
+      "handler_va": "0x424820",
+      "operands": [
+        "u32",
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 16,
+      "total_bytes": 18,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0xd4",
+      "name": "backlog_set_extra",
+      "handler_va": "0x4248d0",
+      "operands": [
+        "u32"
+      ],
+      "operand_bytes": 4,
+      "total_bytes": 6,
+      "orig_count": 0,
+      "chs_count": 0
+    },
+    {
+      "opcode": "0xd5",
+      "name": "map_select",
+      "handler_va": "0x424550",
+      "operands": [
+        "expr",
+        "expr",
+        "expr"
+      ],
+      "operand_bytes": 12,
+      "total_bytes": 14,
+      "orig_count": 0,
+      "chs_count": 0
+    }
+  ],
+  "verification": {
+    "orig": {
+      "label": "ORIG_JP",
+      "xfl_path": "/workspace/game/腐姫ＤＬ/补丁/原版备份/scr.xfl",
+      "encoding": "cp932",
+      "totals": {
+        "files": 341,
+        "passed": 341,
+        "failed": 0,
+        "total_code_bytes": 1125986,
+        "total_instructions": 68819,
+        "total_strings": 19161,
+        "total_str_refs": 37878,
+        "total_jumps": 1607,
+        "total_eof_jumps": 20,
+        "total_labels": 11,
+        "total_arrays": 20
+      },
+      "failed_files": [],
+      "quirk_files": [],
+      "distinct_cmd_opcodes_used": 72,
+      "cmd_opcode_counts": {
+        "0x03": 760,
+        "0x04": 57,
+        "0x05": 671,
+        "0x08": 95,
+        "0x09": 1,
+        "0x0a": 158,
+        "0x0c": 397,
+        "0x0d": 751,
+        "0x0e": 43,
+        "0x0f": 151,
+        "0x10": 175,
+        "0x12": 20,
+        "0x14": 1778,
+        "0x17": 11,
+        "0x1a": 3961,
+        "0x1b": 381,
+        "0x1c": 3569,
+        "0x1e": 1970,
+        "0x20": 243,
+        "0x24": 4769,
+        "0x25": 30,
+        "0x26": 10,
+        "0x27": 1,
+        "0x2a": 926,
+        "0x2b": 412,
+        "0x2d": 901,
+        "0x2e": 81,
+        "0x2f": 10,
+        "0x30": 904,
+        "0x31": 4,
+        "0x34": 15,
+        "0x38": 5,
+        "0x3c": 381,
+        "0x3d": 232,
+        "0x3e": 214,
+        "0x3f": 214,
+        "0x40": 45,
+        "0x41": 4,
+        "0x42": 260,
+        "0x43": 30,
+        "0x44": 1,
+        "0x45": 2,
+        "0x46": 94,
+        "0x47": 4,
+        "0x48": 39,
+        "0x49": 25,
+        "0x4a": 10,
+        "0x4b": 95,
+        "0x51": 18389,
+        "0x53": 21,
+        "0x5a": 221,
+        "0x5c": 904,
+        "0x5d": 189,
+        "0x5e": 221,
+        "0x5f": 221,
+        "0x60": 221,
+        "0x61": 221,
+        "0x62": 221,
+        "0x63": 16824,
+        "0x65": 32,
+        "0x67": 221,
+        "0x68": 221,
+        "0x69": 32,
+        "0x78": 195,
+        "0x79": 51,
+        "0x82": 5,
+        "0x83": 5,
+        "0x84": 53,
+        "0x86": 5,
+        "0x87": 5,
+        "0x88": 34,
+        "0xc8": 26
+      },
+      "unused_cmd_opcodes": [
+        "0x0b",
+        "0x11",
+        "0x13",
+        "0x15",
+        "0x16",
+        "0x18",
+        "0x19",
+        "0x1d",
+        "0x21",
+        "0x22",
+        "0x23",
+        "0x28",
+        "0x29",
+        "0x2c",
+        "0x32",
+        "0x33",
+        "0x35",
+        "0x37",
+        "0x39",
+        "0x3a",
+        "0x3b",
+        "0x4d",
+        "0x50",
+        "0x52",
+        "0x5b",
+        "0x64",
+        "0x66",
+        "0x6e",
+        "0x6f",
+        "0x70",
+        "0x71",
+        "0x72",
+        "0x96",
+        "0x97",
+        "0x98",
+        "0x99",
+        "0x9a",
+        "0x9b",
+        "0x9c",
+        "0x9d",
+        "0x9e",
+        "0x9f",
+        "0xc9",
+        "0xca",
+        "0xd2",
+        "0xd3",
+        "0xd4",
+        "0xd5"
+      ],
+      "hi_family_counts": {
+        "0x1000": 938,
+        "0x2000": 20,
+        "0x3000": 74,
+        "0x4000": 723,
+        "0x5000": 7,
+        "0x7000": 62,
+        "0x9000": 120,
+        "0xa000": 451,
+        "0xb000": 70,
+        "0xc000": 70,
+        "0xd000": 7,
+        "0xe000": 10,
+        "0xf000": 2819
+      },
+      "richedit_0x9c_count": 0,
+      "richedit_0x9d_count": 0
+    },
+    "chs": {
+      "label": "CHS_V1",
+      "xfl_path": "/workspace/game/腐姫ＤＬ/scr.xfl",
+      "encoding": "gbk",
+      "totals": {
+        "files": 341,
+        "passed": 341,
+        "failed": 0,
+        "total_code_bytes": 1125986,
+        "total_instructions": 68819,
+        "total_strings": 19161,
+        "total_str_refs": 37878,
+        "total_jumps": 1607,
+        "total_eof_jumps": 20,
+        "total_labels": 11,
+        "total_arrays": 20
+      },
+      "failed_files": [],
+      "quirk_files": [
+        {
+          "name": "1122.gsc",
+          "warnings": [
+            "trailing_nul_padding_2B"
+          ]
+        },
+        {
+          "name": "1125.gsc",
+          "warnings": [
+            "chs_zeroed_label_entry"
+          ]
+        },
+        {
+          "name": "1160.gsc",
+          "warnings": [
+            "short_dummy_tail_11B_vs_15B"
+          ]
+        },
+        {
+          "name": "2058.gsc",
+          "warnings": [
+            "chs_zeroed_label_entry"
+          ]
+        },
+        {
+          "name": "2059.gsc",
+          "warnings": [
+            "chs_zeroed_label_entry"
+          ]
+        },
+        {
+          "name": "2233.gsc",
+          "warnings": [
+            "trailing_nul_padding_6B"
+          ]
+        },
+        {
+          "name": "2245.gsc",
+          "warnings": [
+            "chs_zeroed_label_entry"
+          ]
+        },
+        {
+          "name": "3177.gsc",
+          "warnings": [
+            "chs_zeroed_label_entry"
+          ]
+        },
+        {
+          "name": "3179.gsc",
+          "warnings": [
+            "chs_zeroed_label_entry"
+          ]
+        },
+        {
+          "name": "3202.gsc",
+          "warnings": [
+            "trailing_nul_padding_1B"
+          ]
+        },
+        {
+          "name": "3262.gsc",
+          "warnings": [
+            "chs_zeroed_label_entry"
+          ]
+        },
+        {
+          "name": "4203.gsc",
+          "warnings": [
+            "chs_zeroed_label_entry",
+            "chs_zeroed_label_entry"
+          ]
+        },
+        {
+          "name": "5110.gsc",
+          "warnings": [
+            "chs_zeroed_label_entry"
+          ]
+        }
+      ],
+      "distinct_cmd_opcodes_used": 72,
+      "cmd_opcode_counts": {
+        "0x03": 760,
+        "0x04": 57,
+        "0x05": 671,
+        "0x08": 95,
+        "0x09": 1,
+        "0x0a": 158,
+        "0x0c": 397,
+        "0x0d": 751,
+        "0x0e": 43,
+        "0x0f": 151,
+        "0x10": 175,
+        "0x12": 20,
+        "0x14": 1778,
+        "0x17": 11,
+        "0x1a": 3961,
+        "0x1b": 381,
+        "0x1c": 3569,
+        "0x1e": 1970,
+        "0x20": 243,
+        "0x24": 4769,
+        "0x25": 30,
+        "0x26": 10,
+        "0x27": 1,
+        "0x2a": 926,
+        "0x2b": 412,
+        "0x2d": 901,
+        "0x2e": 81,
+        "0x2f": 10,
+        "0x30": 904,
+        "0x31": 4,
+        "0x34": 15,
+        "0x38": 5,
+        "0x3c": 381,
+        "0x3d": 232,
+        "0x3e": 214,
+        "0x3f": 214,
+        "0x40": 45,
+        "0x41": 4,
+        "0x42": 260,
+        "0x43": 30,
+        "0x44": 1,
+        "0x45": 2,
+        "0x46": 94,
+        "0x47": 4,
+        "0x48": 39,
+        "0x49": 25,
+        "0x4a": 10,
+        "0x4b": 95,
+        "0x51": 18389,
+        "0x53": 21,
+        "0x5a": 221,
+        "0x5c": 904,
+        "0x5d": 189,
+        "0x5e": 221,
+        "0x5f": 221,
+        "0x60": 221,
+        "0x61": 221,
+        "0x62": 221,
+        "0x63": 16824,
+        "0x65": 32,
+        "0x67": 221,
+        "0x68": 221,
+        "0x69": 32,
+        "0x78": 195,
+        "0x79": 51,
+        "0x82": 5,
+        "0x83": 5,
+        "0x84": 53,
+        "0x86": 5,
+        "0x87": 5,
+        "0x88": 34,
+        "0xc8": 26
+      },
+      "unused_cmd_opcodes": [
+        "0x0b",
+        "0x11",
+        "0x13",
+        "0x15",
+        "0x16",
+        "0x18",
+        "0x19",
+        "0x1d",
+        "0x21",
+        "0x22",
+        "0x23",
+        "0x28",
+        "0x29",
+        "0x2c",
+        "0x32",
+        "0x33",
+        "0x35",
+        "0x37",
+        "0x39",
+        "0x3a",
+        "0x3b",
+        "0x4d",
+        "0x50",
+        "0x52",
+        "0x5b",
+        "0x64",
+        "0x66",
+        "0x6e",
+        "0x6f",
+        "0x70",
+        "0x71",
+        "0x72",
+        "0x96",
+        "0x97",
+        "0x98",
+        "0x99",
+        "0x9a",
+        "0x9b",
+        "0x9c",
+        "0x9d",
+        "0x9e",
+        "0x9f",
+        "0xc9",
+        "0xca",
+        "0xd2",
+        "0xd3",
+        "0xd4",
+        "0xd5"
+      ],
+      "hi_family_counts": {
+        "0x1000": 938,
+        "0x2000": 20,
+        "0x3000": 74,
+        "0x4000": 723,
+        "0x5000": 7,
+        "0x7000": 62,
+        "0x9000": 120,
+        "0xa000": 451,
+        "0xb000": 70,
+        "0xc000": 70,
+        "0xd000": 7,
+        "0xe000": 10,
+        "0xf000": 2819
+      },
+      "richedit_0x9c_count": 0,
+      "richedit_0x9d_count": 0
+    },
+    "orig_vs_chs_diff": {
+      "same_entry_set": true,
+      "same_entry_order": true,
+      "total_scripts": 341,
+      "identical_bytes": 85,
+      "bytecode_diff_count": 0,
+      "bytecode_diff_files": [],
+      "str_only_diff_count": 243,
+      "label_stripped_by_chs_count": 9,
+      "label_stripped_by_chs_files": [
+        "1125.gsc",
+        "2058.gsc",
+        "2059.gsc",
+        "2245.gsc",
+        "3177.gsc",
+        "3179.gsc",
+        "3262.gsc",
+        "4203.gsc",
+        "5110.gsc"
+      ],
+      "tail_quirk_diff_count": 4,
+      "tail_quirk_diff_files": [
+        "1122.gsc",
+        "1160.gsc",
+        "2233.gsc",
+        "3202.gsc"
+      ]
+    }
+  }
+}
